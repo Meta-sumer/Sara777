@@ -1,0 +1,59 @@
+# Render Blueprint — Sara777 API + admin panel
+# The Express server also serves the admin panel (repo-root admin/) at /admin.
+# The mobile app is not deployed here; it is built into an APK.
+#
+# NOTE: this is the free-plan setup, meant for testing.
+# Free services get no persistent disk and spin down after ~15 minutes of no traffic,
+# so server/data/matka.db is wiped on every deploy, restart and cold start —
+# registered users, bids, wallets and fund requests do not survive.
+# The seeder repopulates markets, games and past results on each boot.
+# To keep data, switch to `plan: starter` and add back the disk block documented
+# at the bottom of this file.
+
+services:
+  - type: web
+    name: sara777-api
+    runtime: node
+    plan: free
+    region: singapore      # closest Render region to India
+    branch: main
+    rootDir: server        # db.ts and uploads.ts resolve paths from process.cwd()
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/settings
+    autoDeploy: true
+
+    # Only rebuild when the API or the admin panel changes, not on mobile-only commits.
+    buildFilter:
+      paths:
+        - server/**
+        - admin/**
+        - render.yaml
+
+    envVars:
+      # node:sqlite (DatabaseSync) needs Node 22.5+; 24 matches local development.
+      - key: NODE_VERSION
+        value: "24"
+      - key: JWT_SECRET
+        generateValue: true
+      - key: ADMIN_KEY
+        generateValue: true
+      # Set these in the Render dashboard. If left blank the code falls back to
+      # admin / admin123 and the panel at /admin is wide open to the internet.
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: AUTO_DECLARE
+        value: "1"
+      - key: REGISTER_BONUS
+        value: "1000"
+
+# To make data persistent later: set `plan: starter` above and add this under the service.
+# The mount path must equal <rootDir>/data, because db.ts uses
+# path.resolve(process.cwd(), 'data').
+#
+#    disk:
+#      name: sara777-data
+#      mountPath: /opt/render/project/src/server/data
+#      sizeGB: 1
