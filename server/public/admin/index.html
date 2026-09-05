@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Rama777 Admin</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='7' fill='%23E8722C'/><text x='16' y='23' font-size='19' font-family='system-ui' font-weight='700' fill='white' text-anchor='middle'>R</text></svg>" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <!-- login -->
+    <div id="login" class="login hidden">
+      <form class="login-card" id="login-form">
+        <div class="brand brand-lg"><span class="brand-mark">RAMA</span><span class="brand-num">777</span></div>
+        <p class="muted center">Admin panel</p>
+        <label>Username<input name="username" value="admin" autocomplete="username" /></label>
+        <label>Password<input name="password" type="password" autocomplete="current-password" /></label>
+        <button class="btn primary block" type="submit">Login</button>
+        <p class="error" id="login-error"></p>
+      </form>
+    </div>
+
+    <!-- shell -->
+    <div id="shell" class="shell hidden">
+      <aside class="sidebar">
+        <div class="brand"><span class="brand-mark">RAMA</span><span class="brand-num">777</span></div>
+        <nav id="nav"></nav>
+        <button class="btn ghost block" id="logout">Logout</button>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <button class="icon-btn only-mobile" id="menu-btn" aria-label="Menu">☰</button>
+          <h1 id="page-title">Dashboard</h1>
+          <div class="topbar-right">
+            <span class="chip" id="auto-chip"></span>
+            <button class="btn ghost sm" id="refresh">Refresh</button>
+          </div>
+        </header>
+        <section id="page" class="page"></section>
+      </main>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+    <div id="modal" class="modal hidden"><div class="modal-card" id="modal-card"></div></div>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
