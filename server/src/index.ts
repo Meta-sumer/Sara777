@@ -30,8 +30,8 @@ app.use('/api/admin', adminRouter);
 // user-uploaded payment screenshots and the UPI QR
 app.use('/uploads', express.static(uploadsDir, { maxAge: '7d' }));
 
-// admin panel (static, no build step) — http://localhost:PORT/admin
-const adminDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../public/admin');
+// admin panel — top-level admin/ folder, static, no build step (http://localhost:PORT/admin)
+const adminDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../admin');
 app.use('/admin', express.static(adminDir));
 app.get('/', (_req, res) => res.redirect('/admin'));
 

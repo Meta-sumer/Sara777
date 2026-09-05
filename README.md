@@ -9,7 +9,7 @@ convert coins to money — the deposit/withdraw screens move virtual coins throu
 ```
 MatkaApp/
 ├─ server/            Node + TypeScript API (Express, node:sqlite)
-│  └─ public/admin/   Admin panel (served at /admin, no build step)
+├─ admin/             Admin panel — plain HTML/CSS/JS, served by the API at /admin
 └─ mobile/            Expo + React Native + TypeScript app
 ```
 
@@ -45,8 +45,8 @@ Delete `server/data/matka.db` to reset everything.
 ## 2. Admin panel
 
 Open **http://localhost:4100/admin** and log in with `admin` / `admin123`
-(`ADMIN_USER` / `ADMIN_PASSWORD`). It is plain HTML/CSS/JS served by the API — nothing to build
-or deploy separately.
+(`ADMIN_USER` / `ADMIN_PASSWORD`). The files live in the top-level `admin/` folder and the API
+serves them straight from there — plain HTML/CSS/JS, nothing to build or deploy separately.
 
 | Page | What you control |
 | --- | --- |
@@ -232,4 +232,5 @@ curl -X POST http://localhost:4100/api/admin/results \
   -d '{"marketId":7,"session":"close","panna":"140"}'
 ```
 #   S a r a 7 7 7  
+ #   S a r a 7 7 7  
  
