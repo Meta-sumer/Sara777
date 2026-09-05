@@ -1,0 +1,29 @@
+{
+  "expo": {
+    "name": "Rama777",
+    "slug": "rama777",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.rama777.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E8722C",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "com.rama777.app",
+      "usesCleartextTraffic": true
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "scheme": "rama777"
+  }
+}
