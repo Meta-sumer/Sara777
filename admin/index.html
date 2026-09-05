@@ -44,6 +44,8 @@
     <div id="toast" class="toast hidden"></div>
     <div id="modal" class="modal hidden"><div class="modal-card" id="modal-card"></div></div>
 
-    <script type="module" src="app.js"></script>
+    <!-- classic script, so it runs before the deferred module below -->
+    <script src="config.js"></script>
+    <script type="module" src="src/main.js"></script>
   </body>
 </html>

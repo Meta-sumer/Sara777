@@ -1,8 +1,15 @@
-# Render Blueprint — Sara777 API + admin panel
-# The Express server also serves the admin panel (repo-root admin/) at /admin.
+# Render Blueprint — Sara777
+#
+#   sara777-api    Node web service: the Express API. Also serves the admin panel
+#                  at /admin, so the panel stays reachable even if the static site
+#                  below is removed.
+#   sara777-admin  The same admin/ folder published as its own static site, on its
+#                  own URL. Static sites do not spin down, so the panel opens
+#                  instantly; its API calls still wake the API service.
+#
 # The mobile app is not deployed here; it is built into an APK.
 #
-# NOTE: this is the free-plan setup, meant for testing.
+# NOTE: sara777-api is on the free plan, meant for testing.
 # Free services get no persistent disk and spin down after ~15 minutes of no traffic,
 # so server/data/matka.db is wiped on every deploy, restart and cold start —
 # registered users, bids, wallets and fund requests do not survive.
@@ -49,9 +56,27 @@ services:
       - key: REGISTER_BONUS
         value: "1000"
 
-# To make data persistent later: set `plan: starter` above and add this under the service.
-# The mount path must equal <rootDir>/data, because db.ts uses
-# path.resolve(process.cwd(), 'data').
+  - type: web
+    name: sara777-admin
+    runtime: static
+    branch: main
+    staticPublishPath: admin
+    autoDeploy: true
+
+    # admin/config.js ships with an empty origin, which means "same origin" and is
+    # what the API-served copy at /admin needs. A standalone site is a different
+    # origin, so point it at the API here. Auth is a bearer token in localStorage,
+    # not a cookie, and the API already sends permissive CORS headers.
+    buildCommand: 'echo "window.ADMIN_API_ORIGIN = ''https://sara777-api.onrender.com'';" > admin/config.js'
+
+    buildFilter:
+      paths:
+        - admin/**
+        - render.yaml
+
+# To make the API's data persistent later: set `plan: starter` on sara777-api and
+# add this under that service. The mount path must equal <rootDir>/data, because
+# db.ts uses path.resolve(process.cwd(), 'data').
 #
 #    disk:
 #      name: sara777-data

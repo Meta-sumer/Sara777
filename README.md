@@ -9,7 +9,8 @@ convert coins to money — the deposit/withdraw screens move virtual coins throu
 ```
 MatkaApp/
 ├─ server/            Node + TypeScript API (Express, node:sqlite)
-├─ admin/             Admin panel — plain HTML/CSS/JS, served by the API at /admin
+├─ admin/             Admin panel — plain ES modules, served by the API at /admin
+│  └─ src/            api, ui, auth, router + one module per page in pages/
 └─ mobile/            Expo + React Native + TypeScript app
 ```
 
@@ -46,7 +47,16 @@ Delete `server/data/matka.db` to reset everything.
 
 Open **http://localhost:4100/admin** and log in with `admin` / `admin123`
 (`ADMIN_USER` / `ADMIN_PASSWORD`). The files live in the top-level `admin/` folder and the API
-serves them straight from there — plain HTML/CSS/JS, nothing to build or deploy separately.
+serves them straight from there. It is plain ES modules loaded by the browser — `src/main.js`
+boots, `src/router.js` maps each `#/route` to a module in `src/pages/`, and `src/api.js`,
+`src/ui.js` and `src/auth.js` hold what every page shares. Nothing to build or bundle.
+
+The same folder is deployed twice (see `render.yaml`): the API serves it at `/admin`, and
+`sara777-admin` publishes it as its own Render static site on a separate URL. Static sites do not
+spin down, so that copy opens instantly. `admin/config.js` decides which API it talks to — the
+committed value is an empty string, meaning same origin, and the static site build overwrites it
+with the API origin. Auth is a bearer token in localStorage, not a cookie, so the cross-origin copy
+works without any session changes.
 
 | Page | What you control |
 | --- | --- |
