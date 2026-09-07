@@ -1,0 +1,8 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* styles.css carries the panel's design system (.card, .btn, .chip, .stat, the
+   sidebar and the chat view). It is imported after these layers from main.tsx,
+   so its component classes win over Tailwind's base reset while Tailwind
+   utilities stay available for layout work in the components. */

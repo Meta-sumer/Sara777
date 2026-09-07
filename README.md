@@ -9,8 +9,8 @@ convert coins to money — the deposit/withdraw screens move virtual coins throu
 ```
 MatkaApp/
 ├─ server/            Node + TypeScript API (Express, node:sqlite)
-├─ admin/             Admin panel — plain ES modules, served by the API at /admin
-│  └─ src/            api, ui, auth, router + one module per page in pages/
+├─ admin/             Admin panel — React + TypeScript + Tailwind, built with Vite
+│  └─ src/            api, ui, auth, Layout + one component per page in pages/
 └─ mobile/            Expo + React Native + TypeScript app
 ```
 
@@ -45,18 +45,43 @@ Delete `server/data/matka.db` to reset everything.
 
 ## 2. Admin panel
 
-Open **http://localhost:4100/admin** and log in with `admin` / `admin123`
-(`ADMIN_USER` / `ADMIN_PASSWORD`). The files live in the top-level `admin/` folder and the API
-serves them straight from there. It is plain ES modules loaded by the browser — `src/main.js`
-boots, `src/router.js` maps each `#/route` to a module in `src/pages/`, and `src/api.js`,
-`src/ui.js` and `src/auth.js` hold what every page shares. Nothing to build or bundle.
+```bash
+cd admin
+npm install
+npm run dev          # http://localhost:3000
+```
 
-The same folder is deployed twice (see `render.yaml`): the API serves it at `/admin`, and
-`sara777-admin` publishes it as its own Render static site on a separate URL. Static sites do not
-spin down, so that copy opens instantly. `admin/config.js` decides which API it talks to — the
-committed value is an empty string, meaning same origin, and the static site build overwrites it
-with the API origin. Auth is a bearer token in localStorage, not a cookie, so the cross-origin copy
-works without any session changes.
+Start the API first (`cd server && npm run dev`), then log in with `ADMIN_USER` / `ADMIN_PASSWORD`
+from `server/.env` — `admin` / `admin123` by default.
+
+React + TypeScript + Tailwind, built with Vite. It runs on its own and Vite proxies `/api` and
+`/uploads` to the local backend on 4100, so the browser sees one origin and every fetch the app
+makes stays relative:
+
+```text
+browser   http://localhost:3000/api/admin/login
+proxied   http://localhost:4100/api/admin/login
+```
+
+There is no API base to configure and no environment to switch — the panel only ever talks to the
+local backend. `PORT` is fixed at 3000 in `vite.config.ts`; pass `--port` to move it.
+
+Inside `src/`: `main.tsx` mounts the app, `App.tsx` holds the routes, `Layout.tsx` is the sidebar
+and topbar, `auth.tsx` owns the session, `api.ts` is the typed client, `ui.tsx` has the shared
+pieces (toast, modal, card, table) and `pages/` has one component per screen. Routing is
+hash-based, so `#/users?id=7` opens that user straight from a bid row.
+
+`styles.css` carries the original design system (`.card`, `.btn`, `.chip`, the sidebar, the chat
+view) so the panel looks exactly as it did; Tailwind is configured with the same palette in
+`tailwind.config.js` and used for layout inside the components.
+
+```bash
+npm run build        # type-checks, then writes admin/dist
+npm run typecheck    # types only
+```
+
+The API serves that build at `/admin` — same origin again, which is why the relative fetches work
+there too. `render.yaml` builds the panel as part of the API's build, so a deploy picks it up.
 
 | Page | What you control |
 | --- | --- |

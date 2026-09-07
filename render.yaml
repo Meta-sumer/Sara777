@@ -1,11 +1,8 @@
 # Render Blueprint — Sara777
 #
-#   sara777-api    Node web service: the Express API. Also serves the admin panel
-#                  at /admin, so the panel stays reachable even if the static site
-#                  below is removed.
-#   sara777-admin  The same admin/ folder published as its own static site, on its
-#                  own URL. Static sites do not spin down, so the panel opens
-#                  instantly; its API calls still wake the API service.
+#   sara777-api    Node web service: the Express API. It also serves the admin
+#                  panel at /admin, on the same origin, which is why the panel's
+#                  own fetches stay relative.
 #
 # The mobile app is not deployed here; it is built into an APK.
 #
@@ -25,7 +22,8 @@ services:
     region: singapore      # closest Render region to India
     branch: main
     rootDir: server        # db.ts and uploads.ts resolve paths from process.cwd()
-    buildCommand: npm ci && npm run build
+    # Build the API, then the admin panel — the API serves admin/dist at /admin.
+    buildCommand: npm ci && npm run build && cd ../admin && npm ci && npm run build
     startCommand: npm start
     healthCheckPath: /api/settings
     autoDeploy: true
@@ -55,24 +53,6 @@ services:
         value: "1"
       - key: REGISTER_BONUS
         value: "1000"
-
-  - type: web
-    name: sara777-admin
-    runtime: static
-    branch: main
-    staticPublishPath: admin
-    autoDeploy: true
-
-    # admin/config.js ships with an empty origin, which means "same origin" and is
-    # what the API-served copy at /admin needs. A standalone site is a different
-    # origin, so point it at the API here. Auth is a bearer token in localStorage,
-    # not a cookie, and the API already sends permissive CORS headers.
-    buildCommand: 'echo "window.ADMIN_API_ORIGIN = ''https://sara777-api.onrender.com'';" > admin/config.js'
-
-    buildFilter:
-      paths:
-        - admin/**
-        - render.yaml
 
 # To make the API's data persistent later: set `plan: starter` on sara777-api and
 # add this under that service. The mount path must equal <rootDir>/data, because

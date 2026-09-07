@@ -30,9 +30,12 @@ app.use('/api/admin', adminRouter);
 // user-uploaded payment screenshots and the UPI QR
 app.use('/uploads', express.static(uploadsDir, { maxAge: '7d' }));
 
-// admin panel — top-level admin/ folder, static, no build step (http://localhost:PORT/admin)
-const adminDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../admin');
+// admin panel — the Vite build of the top-level admin/ folder (http://localhost:PORT/admin).
+// Build it with: cd admin && npm run build
+const adminDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../admin/dist');
 app.use('/admin', express.static(adminDir));
+// the panel is a single-page app, so unknown /admin/* paths fall back to its index
+app.get('/admin/*', (_req, res) => res.sendFile(path.join(adminDir, 'index.html')));
 app.get('/', (_req, res) => res.redirect('/admin'));
 
 app.use((_req, res) => res.status(404).json({ message: 'Route not found' }));
