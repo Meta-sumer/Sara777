@@ -1,6 +1,8 @@
+import { config } from './config.js';
 import { db, getSetting, nowIso, setSetting } from './db.js';
-import { pannaDigit, randomPanna, todayStr } from './game.js';
+import { pannaDigit, randomJodi, randomPanna, todayStr } from './game.js';
 import { ensureRates } from './rates.js';
+import { ensureAllSchedules } from './schedule.js';
 
 const MAIN_MARKETS: Array<[name: string, open: string, close: string]> = [
   ['RADHA MORNING', '09:00', '10:00'],
@@ -34,7 +36,16 @@ const STARLINE_MARKETS: Array<[name: string, time: string]> = [
   ['KING STARLINE 09:00 PM', '21:00'],
 ];
 
+/** Andar Bahar: a two-digit (00-99) draw four times a day. */
+const ANDAR_BAHAR_MARKETS: Array<[name: string, time: string]> = [
+  ['ANDAR BAHAR 10:30 AM', '10:30'],
+  ['ANDAR BAHAR 02:30 PM', '14:30'],
+  ['ANDAR BAHAR 06:30 PM', '18:30'],
+  ['ANDAR BAHAR 10:30 PM', '22:30'],
+];
+
 const DEFAULT_SETTINGS: Record<string, string> = {
+  andarbahar_enabled: '1',
   app_name: 'Rama777',
   support_name: 'Rama777 Support',
   whatsapp_number: '919999999999',
@@ -77,25 +88,46 @@ function seedMarkets() {
   return true;
 }
 
-/** Backfill past results so the chart / history screens have data on day one. */
-function seedHistory(days = 45) {
-  const markets = db.prepare('SELECT id, kind FROM markets').all() as Array<{ id: number; kind: string }>;
+/** Add the Andar Bahar draws to databases created before the game existed. */
+function seedAndarBahar() {
+  const count = (db.prepare(`SELECT COUNT(*) AS c FROM markets WHERE kind = 'andarbahar'`).get() as { c: number }).c;
+  if (count > 0) return [] as number[];
   const insert = db.prepare(
-    `INSERT OR IGNORE INTO results (market_id, result_date, open_panna, open_digit, close_panna, close_digit)
-     VALUES (?, ?, ?, ?, ?, ?)`,
+    'INSERT INTO markets (name, kind, open_time, close_time, days, is_active, sort_order) VALUES (?, ?, ?, ?, ?, 1, ?)',
+  );
+  return ANDAR_BAHAR_MARKETS.map(([name, time], i) =>
+    Number(insert.run(name, 'andarbahar', time, time, '0,1,2,3,4,5,6', i).lastInsertRowid),
+  );
+}
+
+/** Backfill past results so the chart / history screens have data on day one. */
+function seedHistory(days = 45, onlyMarketIds?: number[]) {
+  const markets = (db.prepare('SELECT id, kind FROM markets').all() as Array<{ id: number; kind: string }>).filter(
+    (m) => !onlyMarketIds || onlyMarketIds.includes(m.id),
+  );
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO results
+       (market_id, result_date, open_panna, open_digit, close_panna, close_digit, number,
+        open_declared_at, close_declared_at, open_settled_at, close_settled_at, declared_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Auto')`,
   );
 
   for (let back = days; back >= 1; back--) {
     const d = new Date();
     d.setDate(d.getDate() - back);
     const date = todayStr(d);
+    const at = d.toISOString();
     for (const m of markets) {
+      if (m.kind === 'andarbahar') {
+        insert.run(m.id, date, null, null, null, null, randomJodi(), at, null, at, null);
+        continue;
+      }
       const op = randomPanna();
       if (m.kind === 'starline') {
-        insert.run(m.id, date, op, pannaDigit(op), null, null);
+        insert.run(m.id, date, op, pannaDigit(op), null, null, null, at, null, at, null);
       } else {
         const cp = randomPanna();
-        insert.run(m.id, date, op, pannaDigit(op), cp, pannaDigit(cp));
+        insert.run(m.id, date, op, pannaDigit(op), cp, pannaDigit(cp), null, at, at, at, at);
       }
     }
   }
@@ -117,13 +149,26 @@ function seedNotifications() {
 
 export function ensureSeed() {
   const fresh = seedMarkets();
+  const newAb = seedAndarBahar();
+  ensureAllSchedules();
   ensureRates();
   seedSettings();
   seedNotifications();
   if (fresh) {
     seedHistory();
     console.log('[seed] markets, settings and 45 days of results created');
+  } else if (newAb.length > 0) {
+    seedHistory(45, newAb);
+    console.log('[seed] andar bahar draws added');
   }
+  return { fresh };
+}
+
+/** Fill a fresh database with demo users, bids and payments when DEMO_DATA=1. */
+export async function ensureDemo(fresh: boolean) {
+  if (!config.demoData || !fresh) return;
+  const { seedDemo } = await import('./demo.js');
+  seedDemo();
 }
 
 // allow `npm run seed`

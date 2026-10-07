@@ -3,11 +3,21 @@ import bcrypt from 'bcryptjs';
 import { config } from '../config.js';
 import { db, nowIso } from '../db.js';
 import { type AuthedRequest, type UserRow, publicUser, requireAuth, signToken } from '../auth.js';
-import { applyTxn, notify } from '../wallet.js';
+import { BY_AUTO, applyTxn, notify } from '../wallet.js';
 
 export const authRouter = Router();
 
 const MOBILE_RE = /^[6-9]\d{9}$/;
+
+/** Optional device details the app sends with login/register (shown on All Users). */
+function deviceOf(body: unknown): { name: string | null; id: string | null } {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const clean = (v: unknown, max: number) => {
+    const s = typeof v === 'string' ? v.trim().slice(0, max) : '';
+    return s || null;
+  };
+  return { name: clean(b.deviceName, 80), id: clean(b.deviceId, 64) };
+}
 
 function findByMobile(mobile: string) {
   return db.prepare('SELECT * FROM users WHERE mobile = ?').get(mobile) as UserRow | undefined;
@@ -23,9 +33,14 @@ authRouter.post('/register', (req, res) => {
   if (password.length < 4) return res.status(400).json({ message: 'Password must be at least 4 characters' });
   if (findByMobile(mobile)) return res.status(409).json({ message: 'This mobile number is already registered' });
 
+  const device = deviceOf(req.body);
+  const now = nowIso();
   const info = db
-    .prepare('INSERT INTO users (name, mobile, password_hash, balance, created_at) VALUES (?, ?, ?, 0, ?)')
-    .run(name, mobile, bcrypt.hashSync(password, 10), nowIso());
+    .prepare(
+      `INSERT INTO users (name, username, mobile, password_hash, balance, device_name, device_id, last_login_at, last_seen_at, created_at)
+       VALUES (?, ?, ?, ?, 0, ?, ?, ?, ?, ?)`,
+    )
+    .run(name, mobile, mobile, bcrypt.hashSync(password, 10), device.name, device.id, now, now, now);
   const userId = Number(info.lastInsertRowid);
 
   if (config.registerBonus > 0) {
@@ -35,6 +50,8 @@ authRouter.post('/register', (req, res) => {
       delta: config.registerBonus,
       particulars: 'Register Bonus',
       note: 'Welcome bonus credited',
+      addedBy: BY_AUTO,
+      mode: 'Bonus',
     });
   }
   notify(userId, 'Welcome!', `Hi ${name}, your account is ready. Enjoy the games.`);
@@ -50,7 +67,13 @@ authRouter.post('/login', (req, res) => {
   if (!user || !bcrypt.compareSync(password, user.password_hash)) {
     return res.status(401).json({ message: 'Mobile number or password is wrong' });
   }
+  if (user.is_deleted) return res.status(403).json({ message: 'This account was deleted. Contact support.' });
   if (!user.is_active) return res.status(403).json({ message: 'Account is blocked. Contact support.' });
+  const device = deviceOf(req.body);
+  const now = nowIso();
+  db.prepare(
+    'UPDATE users SET last_login_at = ?, last_seen_at = ?, device_name = COALESCE(?, device_name), device_id = COALESCE(?, device_id) WHERE id = ?',
+  ).run(now, now, device.name, device.id, user.id);
   res.json({ token: signToken(user.id), user: publicUser(user) });
 });
 

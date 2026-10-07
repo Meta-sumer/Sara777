@@ -10,9 +10,9 @@ import { marketsRouter } from './routes/markets.js';
 import { bidsRouter } from './routes/bids.js';
 import { walletRouter } from './routes/wallet.js';
 import { miscRouter } from './routes/misc.js';
-import { adminRouter } from './routes/admin.js';
+import { adminRouter } from './routes/admin/index.js';
 import { startScheduler } from './results.js';
-import { ensureSeed } from './seed.js';
+import { ensureDemo, ensureSeed } from './seed.js';
 import { uploadsDir } from './uploads.js';
 
 const app = express();
@@ -32,7 +32,10 @@ app.use('/uploads', express.static(uploadsDir, { maxAge: '7d' }));
 
 // admin panel — the Vite build of the top-level admin/ folder (http://localhost:PORT/admin).
 // Build it with: cd admin && npm run build
-const adminDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../admin/dist');
+// ADMIN_DIST points at another build (used to test several panel builds side by side)
+const adminDir = process.env.ADMIN_DIST
+  ? path.resolve(process.env.ADMIN_DIST)
+  : path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../admin/dist');
 app.use('/admin', express.static(adminDir));
 // the panel is a single-page app, so unknown /admin/* paths fall back to its index
 app.get('/admin/*', (_req, res) => res.sendFile(path.join(adminDir, 'index.html')));
@@ -55,7 +58,8 @@ function lanAddress() {
   return 'localhost';
 }
 
-ensureSeed();
+const { fresh } = ensureSeed();
+await ensureDemo(fresh);
 startScheduler();
 
 app.listen(config.port, () => {

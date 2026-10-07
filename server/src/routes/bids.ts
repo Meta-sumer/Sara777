@@ -2,17 +2,10 @@ import { Router } from 'express';
 import { config } from '../config.js';
 import { db, nowIso } from '../db.js';
 import { type AuthedRequest, requireAuth } from '../auth.js';
-import {
-  type Session,
-  allowedSessions,
-  gameType,
-  marketStatus,
-  todayStr,
-  validatePick,
-} from '../game.js';
+import { KINDS, type Kind, type Session, gameType, normalizePick, todayStr, validatePick } from '../game.js';
 import { activeRate } from '../rates.js';
-import type { MarketRow } from '../results.js';
-import { applyTxn } from '../wallet.js';
+import { type MarketRow, marketState } from '../schedule.js';
+import { BY_SELF, applyTxn } from '../wallet.js';
 
 export const bidsRouter = Router();
 
@@ -32,18 +25,16 @@ bidsRouter.post('/', requireAuth, (req: AuthedRequest, res) => {
   if (!market || !market.is_active) return res.status(404).json({ message: 'Market not available' });
 
   const def = gameType(gameTypeKey);
-  if (!def || !def.kinds.includes(market.kind)) {
+  if (!def || def.rates[market.kind] === undefined) {
     return res.status(400).json({ message: 'This game is not available for this market' });
   }
 
-  // rate and on/off state are controlled from the admin panel
-  const rateRow = activeRate(def.key);
+  // rate and on/off state are controlled per market kind from the admin panel
+  const rateRow = activeRate(market.kind, def.key);
   if (!rateRow) return res.status(400).json({ message: `${def.label} is currently disabled` });
 
-  const status = marketStatus(market.open_time, market.close_time, market.days);
-  const open = market.kind === 'starline'
-    ? (status === 'open_running' ? (['open'] as Session[]) : ([] as Session[]))
-    : allowedSessions(status);
+  // the weekly timetable decides which sessions still take bids
+  const open = marketState(market).sessions;
   if (open.length === 0) return res.status(400).json({ message: 'Betting is closed for this market' });
 
   // Games that need both halves of the result must be placed before open time.
@@ -71,7 +62,8 @@ bidsRouter.post('/', requireAuth, (req: AuthedRequest, res) => {
     if (amount > config.maxBid) {
       return res.status(400).json({ message: `Maximum bid amount is ${config.maxBid}` });
     }
-    entries.push({ pick, amount });
+    // pannas are stored in standard matka order, so "321" and "123" are the same pick
+    entries.push({ pick: normalizePick(def.key, pick), amount });
   }
 
   const total = entries.reduce((sum, e) => sum + e.amount, 0);
@@ -108,7 +100,8 @@ bidsRouter.post('/', requireAuth, (req: AuthedRequest, res) => {
         type: 'bid',
         delta: -e.amount,
         particulars: `${market.name} bid`,
-        note: `${def.label} ${e.pick} (${effectiveSession})`,
+        note: `${market.name} (${def.label}, ${effectiveSession === 'open' ? 'Open' : 'Close'}): ${e.pick}`,
+        addedBy: BY_SELF,
       });
     }
     db.exec('COMMIT');
@@ -130,7 +123,7 @@ bidsRouter.post('/', requireAuth, (req: AuthedRequest, res) => {
 bidsRouter.get('/', requireAuth, (req: AuthedRequest, res) => {
   const page = Math.max(1, Number(req.query.page ?? 1));
   const perPage = Math.min(Number(req.query.perPage ?? 20), 100);
-  const kind = req.query.kind === 'starline' ? 'starline' : req.query.kind === 'main' ? 'main' : null;
+  const kind = KINDS.includes(req.query.kind as Kind) ? String(req.query.kind) : null;
   const status = typeof req.query.status === 'string' ? req.query.status : null;
 
   const where: string[] = ['user_id = ?'];

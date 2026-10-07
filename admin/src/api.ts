@@ -44,7 +44,9 @@ export async function api<T>(path: string, { method = 'GET', body }: Options = {
   const text = await res.text();
   const data = (text ? JSON.parse(text) : {}) as T & { message?: string };
 
-  if (res.status === 401 || res.status === 403) {
+  // 401 = session gone (expired, blocked, deleted) → back to login.
+  // 403 = logged in but this page/action is not in the admin's permissions.
+  if (res.status === 401) {
     localStorage.removeItem(TOKEN_KEY);
     onUnauthorized();
     throw new ApiError(data.message ?? 'Session expired', res.status);

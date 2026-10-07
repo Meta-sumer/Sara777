@@ -1,43 +1,35 @@
 import { Router } from 'express';
 import { db } from '../db.js';
-import {
-  allowedSessions,
-  formatTime12,
-  marketStatus,
-  todayStr,
-} from '../game.js';
+import { parseKind, todayStr } from '../game.js';
 import { allRates } from '../rates.js';
-import { type MarketRow, formatResult, getResult } from '../results.js';
+import { formatResult, getResult } from '../results.js';
+import { type MarketRow, andarBaharEnabled, marketState, resultTimes } from '../schedule.js';
 
 export const marketsRouter = Router();
 
-const STATUS_LABEL: Record<string, string> = {
-  open_running: 'Betting is running',
-  close_running: 'Betting is running',
-  closed_today: 'Closed for Today',
-  holiday: 'Holiday',
-};
-
 function serialize(m: MarketRow, date: string) {
-  const status = marketStatus(m.open_time, m.close_time, m.days);
-  const sessions = m.kind === 'starline'
-    ? (status === 'open_running' ? ['open'] : [])
-    : allowedSessions(status);
+  const state = marketState(m);
+  const times = resultTimes(m, state.schedule);
   const result = getResult(m.id, date);
+  const runningDays = (
+    db.prepare('SELECT day FROM market_schedule WHERE market_id = ? AND is_closed = 0 ORDER BY day').all(m.id) as Array<{
+      day: number;
+    }>
+  ).map((r) => r.day);
 
   return {
     id: m.id,
     name: m.name,
     kind: m.kind,
-    openTime: m.open_time,
-    closeTime: m.close_time,
-    openTimeLabel: formatTime12(m.open_time),
-    closeTimeLabel: formatTime12(m.close_time),
-    days: m.days.split(',').map(Number),
-    status,
-    statusLabel: STATUS_LABEL[status],
-    isPlayable: sessions.length > 0,
-    sessions,
+    openTime: times.open,
+    closeTime: times.close,
+    openTimeLabel: times.openLabel,
+    closeTimeLabel: times.closeLabel,
+    days: runningDays,
+    status: state.status,
+    statusLabel: state.label,
+    isPlayable: state.sessions.length > 0,
+    sessions: state.sessions,
     result: formatResult(result, m.kind),
     resultParts: result
       ? {
@@ -45,25 +37,34 @@ function serialize(m: MarketRow, date: string) {
           openDigit: result.open_digit,
           closePanna: result.close_panna,
           closeDigit: result.close_digit,
+          number: result.number,
         }
       : null,
   };
 }
 
-marketsRouter.get('/', (req, res) => {
-  const kind = req.query.kind === 'starline' ? 'starline' : 'main';
-  const date = todayStr();
-  const markets = db
+function marketsOf(kind: string) {
+  if (kind === 'andarbahar' && !andarBaharEnabled()) return [];
+  return db
     .prepare('SELECT * FROM markets WHERE kind = ? AND is_active = 1 ORDER BY sort_order, id')
     .all(kind) as unknown as MarketRow[];
-  res.json({ date, markets: markets.map((m) => serialize(m, date)) });
+}
+
+marketsRouter.get('/', (req, res) => {
+  const kind = parseKind(req.query.kind);
+  const date = todayStr();
+  res.json({
+    date,
+    enabled: kind !== 'andarbahar' || andarBaharEnabled(),
+    markets: marketsOf(kind).map((m) => serialize(m, date)),
+  });
 });
 
 marketsRouter.get('/game-types', (req, res) => {
-  const kind = req.query.kind === 'starline' ? 'starline' : 'main';
+  const kind = parseKind(req.query.kind);
   res.json({
-    gameTypes: allRates()
-      .filter((g) => g.isActive && g.kinds.includes(kind))
+    gameTypes: allRates(kind)
+      .filter((g) => g.isActive)
       .map((g) => ({ key: g.key, label: g.label, rate: g.rate, sessions: g.sessions })),
   });
 });
@@ -89,6 +90,7 @@ marketsRouter.get('/:id/results', (req, res) => {
       open_digit: string | null;
       close_panna: string | null;
       close_digit: string | null;
+      number: string | null;
     }>;
 
   res.json({
@@ -99,7 +101,8 @@ marketsRouter.get('/:id/results', (req, res) => {
       openDigit: r.open_digit,
       closePanna: r.close_panna,
       closeDigit: r.close_digit,
-      jodi: r.open_digit && r.close_digit ? `${r.open_digit}${r.close_digit}` : null,
+      number: r.number,
+      jodi: r.open_digit && r.close_digit ? `${r.open_digit}${r.close_digit}` : r.number,
       display: formatResult(r, m.kind),
     })),
   });
@@ -108,20 +111,24 @@ marketsRouter.get('/:id/results', (req, res) => {
 /** All markets' results for one day — the "Game Result" history screen. */
 marketsRouter.get('/results/by-date', (req, res) => {
   const date = String(req.query.date ?? todayStr());
-  const kind = req.query.kind === 'starline' ? 'starline' : 'main';
-  const markets = db
-    .prepare('SELECT * FROM markets WHERE kind = ? AND is_active = 1 ORDER BY sort_order, id')
-    .all(kind) as unknown as MarketRow[];
+  const kind = parseKind(req.query.kind);
+  const day = new Date(`${date}T12:00:00`).getDay();
 
   res.json({
     date,
-    results: markets.map((m) => {
+    results: marketsOf(kind).map((m) => {
       const r = getResult(m.id, date);
+      const s = db.prepare('SELECT * FROM market_schedule WHERE market_id = ? AND day = ?').get(m.id, day) as
+        | { open_result_time: string; close_result_time: string | null }
+        | undefined;
+      const times = s
+        ? resultTimes(m, { ...s, market_id: m.id, day, open_bet_time: '', close_bet_time: '', is_closed: 0 })
+        : resultTimes(m, marketState(m).schedule);
       return {
         marketId: m.id,
         marketName: m.name,
-        openTimeLabel: formatTime12(m.open_time),
-        closeTimeLabel: formatTime12(m.close_time),
+        openTimeLabel: times.openLabel,
+        closeTimeLabel: times.closeLabel,
         display: formatResult(r, m.kind),
       };
     }),

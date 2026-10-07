@@ -5,12 +5,12 @@ import react from '@vitejs/plugin-react';
  * The panel runs on 3000 and proxies /api and /uploads to the API, so the
  * browser only ever talks to one origin and the app's own fetches stay relative.
  *
- * The target is the deployed API on Render, so the panel drives live data and
- * logs in with the ADMIN_USER / ADMIN_PASSWORD set in the Render dashboard.
- * Point it back at a local backend by changing this one line to
- * 'http://localhost:4100' — nothing else in the app knows the difference.
+ * The target is the local API (cd server && npm run dev), which logs in with
+ * ADMIN_USER / ADMIN_PASSWORD from server/.env. To drive the deployed API instead
+ * (once it runs this version): API_TARGET=https://sara777-api.onrender.com npm run dev
+ * — nothing else in the app knows the difference.
  */
-const API_TARGET = 'https://sara777-api.onrender.com';
+const API_TARGET = process.env.API_TARGET ?? 'http://localhost:4100';
 
 export default defineConfig(({ command }) => ({
   plugins: [react()],

@@ -3,7 +3,7 @@ import { useAuth } from './auth';
 
 export function Login() {
   const { signIn } = useAuth();
-  const [username, setUsername] = useState('admin');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -24,11 +24,8 @@ export function Login() {
   return (
     <div className="login">
       <form className="login-card" onSubmit={onSubmit}>
-        <div className="brand brand-lg">
-          <span className="brand-mark">RAMA</span>
-          <span className="brand-num">777</span>
-        </div>
-        <p className="muted center">Admin panel</p>
+        <img className="login-logo" src={`${import.meta.env.BASE_URL}logo.png`} alt="Rama777" />
+        <p className="muted center">Admin panel — staff and admin login</p>
 
         <label>
           Username

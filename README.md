@@ -38,10 +38,23 @@ that address, not `localhost`.
 | `JWT_SECRET` | dev secret | change before shipping |
 | `ADMIN_USER` / `ADMIN_PASSWORD` | `admin` / `admin123` | admin panel login |
 | `ADMIN_KEY` | `admin123` | `x-admin-key` header, for scripts/curl instead of logging in |
-| `AUTO_DECLARE` | `1` | starting value for auto-publishing results; after first boot the admin panel's Settings page owns this |
+| `AUTO_DECLARE` | `1` | starting value for auto-publishing random results; after first boot Others → General Settings owns this. Turn it off once results are declared by hand |
 | `REGISTER_BONUS` | 1000 | coins credited on signup |
+| `DEMO_DATA` | — | `1` fills a **fresh** database with demo users, bids, deposits and withdrawals |
+| `APP_TZ` | `Asia/Kolkata` | time zone for market times, "today" and report dates (hosts run in UTC) |
+| `ADMIN_DIST` | `../admin/dist` | serve a different admin build at `/admin` |
 
 Delete `server/data/matka.db` to reset everything.
+
+### Demo data
+
+```bash
+npm run seed:demo    # adds demo data to the current database (once)
+```
+
+90 users (password `demo1234`), two weeks of bids on every market kind settled against the seeded
+results, deposits, withdrawals in every status, bank-detail changes, a few blocked and deleted users,
+and a staff account `ravi1` / `ravi@1234` with an Operations Manager permission set.
 
 ## 2. Admin panel
 
@@ -83,24 +96,29 @@ npm run typecheck    # types only
 The API serves that build at `/admin` — same origin again, which is why the relative fetches work
 there too. `render.yaml` builds the panel as part of the API's build, so a deploy picks it up.
 
-| Page | What you control |
-| --- | --- |
-| Dashboard | Bids, staked amount and payout for today, user counts, wallet float, pending requests, per-market table |
-| Results | Declare open/close panna for any market and date, see pending bid counts, per-number exposure, cancel a market day and refund every pending bid |
-| Markets | Add markets, rename, change open/close times and running days, reorder, enable/disable, delete |
-| Bids | Every bid with filters (market, date, status, mobile), running totals, pagination |
-| Users | Search, block/unblock, credit/debit coins with a note, reset password, full bid + transaction + payout-detail view |
-| Fund requests | Approve or reject deposits and withdrawals (rejecting a withdrawal returns the held coins) |
-| Game rates | Edit every payout multiplier and switch games on/off — takes effect on the next bid instantly |
-| Notifications | Broadcast to everyone or notify one user |
-| Support | Read every user's chat thread and reply as support |
-| Ideas | Everything submitted from the app's Submit Idea screen |
-| Settings | App name, support name, WhatsApp number, marquee, notice board, share text, videos, auto-approve deposits, auto-declare results |
-| Activity log | Every admin action with timestamp |
+The panel follows the client's specification document and its reference screenshots: orange sidebar,
+breadcrumb cards, DataTables-style lists (Show N entries, search, sort, pagination), dark-header popups.
 
-Changing a rate or a setting flows straight through to the app — the mobile client reads game types,
-rates and settings from the API, so a disabled game disappears from the bid screen and a new rate is
-used for the next bid placed.
+| Sidebar | Pages |
+| --- | --- |
+| Dashboard | User, bid, wallet, payout, deposit and withdraw totals; today's registrations with / without balance; registered-user log; today's deposit log |
+| All Users | Search, device info, block / unblock, profile popup (payout details + account summary); `#/users?id=N` opens a profile |
+| Games / Starline / Andar Bahar | **Provider** (add, edit, disable; Andar Bahar module on/off) · **Setting** (weekly timetable per day: bet open/close and result times, closed days, multiple-days edit) · **Rates** (multipliers, decimals allowed) · **Result** (declare → Get Winners List → "Are you sure?" → pay; revert, remove, refund) · Starline / AB **Profit Loss** |
+| Bookie Corner | OC Cutting Group, Cutting Group (per digit and panna: stake, amount to pay, profit / loss, bid drill-down), Final OC Cutting Group (jodi + sangam) |
+| Wallet | Fund requests (withdraw tabs + deposit approvals, bulk approve), export / download debit report (Kotak, generic bank and Paytm payout files), bulk PG payment (failed payouts), View Wallet (credit / debit, ledgers, transaction history), search account, bank change history, withdraw request on/off per weekday |
+| Approved Debit Requests / Declined | Approved withdrawals by Paytm / bank with mark paid or failed; declined requests |
+| Reports | Jodi All, Sales, Sales Summary, Starline and Andar Bahar sales and bids, Fund Report 1 / 2, UPI Fund, Total (detailed) bids, Credit / Debit, Daily, Bidding, User Analysis, User Reports, User Lists, Customer Balance, All User Bids |
+| Notification · News · Deleted User | Broadcast notifications, login news popup, deleted users with restore and an optional "zero balance for N days" auto-delete |
+| App Settings | How to Play, Notice Board (withdraw screen), Profile Note, Wallet Contact |
+| Masters | Payment gateway list and active pay-in / pay-out gateway (configuration only), staff accounts with per-page permissions |
+| Others | All bids, support inbox, ideas, general settings, activity log |
+
+**Staff accounts.** `ADMIN_USER` is the super admin. Staff created under Masters log in with their own
+username and only see the pages ticked for them; the API enforces the same permission keys
+(`server/src/permissions.ts`). Blocking or deleting a staff account ends their session immediately.
+
+Changing a rate, timetable or setting flows straight through to the app — the mobile client reads
+markets, game types, rates and settings from the API.
 
 ## 3. Run the app
 
@@ -154,22 +172,34 @@ Theme is light/dark with the toggle in the drawer; the choice is stored on the d
 Result format is `openPanna-openDigit closeDigit-closePanna`, e.g. `140-56-268`.
 A panna's digit (ank) is the last digit of the sum of its three digits.
 
-| Game | Wins when | Payout (per coin) |
-| --- | --- | --- |
-| Single Digit | pick == session digit | 10× |
-| Jodi Digit | pick == open digit + close digit | 100× |
-| Single Panna | pick == session panna, 3 different digits | 150× |
-| Double Panna | pick == session panna, exactly two digits equal | 300× |
-| Triple Panna | pick == session panna, all digits equal | 900× |
-| Half Sangam | `openPanna-closeDigit` or `openDigit-closePanna` | 1000× |
-| Full Sangam | `openPanna-closePanna` | 10000× |
+Pannas are written in standard matka order (ascending, 0 counts as 10: `123`, `190`, `550`); a pick
+typed in any order is stored that way, so `321` wins on `123`.
 
-Bidding windows: open-session bids close at the market's open time, close-session bids at its close
-time. Jodi and sangam need both halves of the result, so they only accept bids before open time.
-Starline games have a single result and a single window.
+Default payouts per coin (editable per market kind under Game Rates):
 
-Settlement is automatic — publishing a result decides every pending bid for that market/day,
-credits winners and writes passbook entries.
+| Game | Wins when | Main | Starline |
+| --- | --- | --- | --- |
+| Single Digit | pick == session digit | 9.5× | 10× |
+| Jodi Digit | pick == open digit + close digit | 95× | — |
+| Red Brackets | jodi from the red set (00, 05, 11, 16 …), off by default | 95× | — |
+| Single Panna | pick == session panna, 3 different digits | 150× | 160× |
+| Double Panna | pick == session panna, exactly two digits equal | 300× | 320× |
+| Triple Panna | pick == session panna, all digits equal | 900× | 1000× |
+| Half Sangam | `openPanna-closeDigit` or `openDigit-closePanna` | 1000× | — |
+| Full Sangam | `openPanna-closePanna` | 10000× | — |
+
+**Andar Bahar** is a two-digit draw (00–99, pays 100×) four times a day; it can be switched off from
+the AB Provider page.
+
+Bidding windows come from each market's weekly timetable (Game Settings): main markets stop open-
+session bids at OBT and close-session bids at CBT; Starline and Andar Bahar slots take bets between
+OBT and CBT. Jodi and sangam need both halves of the result, so they only accept bids before OBT.
+A session stops taking bids as soon as its result is declared.
+
+Settlement: declaring a result does not pay anyone. The admin opens **Get Winners List**, confirms,
+and winners are credited (passbook entries record who paid them). **Revert** takes winnings back and
+reopens the bids. With auto results on, the server declares a random result at each result time and
+pays immediately.
 
 ---
 
@@ -215,56 +245,29 @@ POST   /api/support                 { text }
 
 ### Admin
 
-Authenticate with either a login token (`Authorization: Bearer <token>` from `/api/admin/login`)
-or the static `x-admin-key: admin123` header.
+Authenticate with a login token (`Authorization: Bearer <token>` from `POST /api/admin/login`,
+for the super admin or a staff account) or the static `x-admin-key` header (full access). Every
+route checks the caller's permission keys; a missing permission returns 403.
 
-```
-POST   /api/admin/login             { username, password }  ->  { token }
-GET    /api/admin/stats             dashboard numbers + per-market totals
+Each sidebar module has its own router in `server/src/routes/admin/`:
 
-GET    /api/admin/markets?date=
-POST   /api/admin/markets           { name, kind, openTime, closeTime, days?, sortOrder? }
-PATCH  /api/admin/markets/:id       { name?, openTime?, closeTime?, days?, isActive?, sortOrder? }
-DELETE /api/admin/markets/:id       (disables instead of deleting when the market has bids)
-POST   /api/admin/markets/cancel    { marketId, date?, reason? }   refund pending bids
+| Prefix | File | Covers |
+| --- | --- | --- |
+| `/api/admin` | `core.ts` | login, `/me` (permissions), sidebar stats, player search, all bids, support, ideas, general settings, activity log |
+| `/api/admin/dashboard` | `dashboard.ts` | dashboard numbers, today's registrations |
+| `/api/admin/users` | `users.ts` | users, profile, block, deleted users, auto-delete |
+| `/api/admin/content` | `content.ts` | notifications, news, how to play, notice board, profile note, wallet contact |
+| `/api/admin/games` | `games.ts` | providers, weekly timetable, rates, results (declare, winners, settle, revert, refund) for `main`, `starline`, `andarbahar` |
+| `/api/admin/pnl` | `pnl.ts` | Starline / Andar Bahar profit-loss, Bookie Corner, bid history |
+| `/api/admin/wallet` | `wallet.ts` | fund requests and their actions, debit reports, wallets, ledgers, bank history, withdraw on/off |
+| `/api/admin/reports` | `reports1.ts`, `reports2.ts` | every report page |
+| `/api/admin/masters` | `masters.ts` | payment gateways, staff accounts |
 
-GET    /api/admin/results?date=
-POST   /api/admin/results           { marketId, session, panna, date? }   publish + settle
-DELETE /api/admin/results?marketId=&date=   (only while nothing is settled)
-POST   /api/admin/results/settle    { marketId, date? }   re-run settlement
-
-GET    /api/admin/bids?marketId=&userId=&date=&status=&gameType=&kind=&mobile=&page=
-GET    /api/admin/bids/summary?marketId=&date=      per-number exposure
-
-GET    /api/admin/users?search=&page=
-GET    /api/admin/users/:id         profile + bids + transactions + requests + payout details
-POST   /api/admin/users/:id/balance { delta, note? }
-POST   /api/admin/users/:id/block   { blocked: true|false }
-POST   /api/admin/users/:id/password { password }
-
-GET    /api/admin/fund-requests?status=pending&type=
-POST   /api/admin/fund-requests/:id { action: 'approve'|'reject', remark? }
-
-GET    /api/admin/rates
-POST   /api/admin/rates             { rates: [{ key, rate, isActive }] }
-
-GET    /api/admin/notifications
-POST   /api/admin/notifications     { title, body, userId? }
-GET    /api/admin/support           thread list
-GET    /api/admin/support/:userId
-POST   /api/admin/support/:userId   { text }
-GET    /api/admin/ideas
-GET    /api/admin/settings
-POST   /api/admin/settings          { anySettingKey: value }
-GET    /api/admin/logs
-```
-
-Example — publish a close result by hand:
+Example — declare an open result, then pay its winners:
 
 ```bash
-curl -X POST http://localhost:4100/api/admin/results \
-  -H 'x-admin-key: admin123' -H 'Content-Type: application/json' \
-  -d '{"marketId":7,"session":"close","panna":"140"}'
+curl -X POST http://localhost:4100/api/admin/games/results   -H 'x-admin-key: admin123' -H 'Content-Type: application/json'   -d '{"marketId":7,"session":"open","value":"140"}'
+curl -X POST http://localhost:4100/api/admin/games/results/settle   -H 'x-admin-key: admin123' -H 'Content-Type: application/json'   -d '{"marketId":7,"session":"open"}'
 ```
 #   S a r a 7 7 7  
  #   S a r a 7 7 7  
