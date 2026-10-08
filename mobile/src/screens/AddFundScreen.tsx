@@ -5,6 +5,7 @@ import React, { useState } from 'react';
 import { Alert, Image, KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
 import { ApiError, api, assetUrl, formatCoins } from '../api';
 import { useAuth } from '../auth';
+import { WalletContacts } from '../components/AppContent';
 import { Header } from '../components/Header';
 import { useAppNavigation } from '../navTypes';
 import { radius, useTheme } from '../theme';
@@ -247,6 +248,10 @@ export default function AddFundScreen() {
             ? 'Your request goes to the admin for verification. Coins are credited once your payment is confirmed.'
             : 'These are virtual coins used only inside this app. They carry no monetary value and cannot be exchanged for money.'}
         </Txt>
+
+        <View style={{ marginTop: 12 }}>
+          <WalletContacts contacts={settings?.walletContacts} />
+        </View>
       </Screen>
     </KeyboardAvoidingView>
   );

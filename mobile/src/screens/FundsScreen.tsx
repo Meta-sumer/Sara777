@@ -1,6 +1,8 @@
 import { useAppNavigation } from '../navTypes';
 import React from 'react';
 import { View } from 'react-native';
+import { useAuth } from '../auth';
+import { WalletContacts } from '../components/AppContent';
 import { Header } from '../components/Header';
 import { useTheme } from '../theme';
 import { MenuItem, Screen } from '../ui';
@@ -8,6 +10,7 @@ import { MenuItem, Screen } from '../ui';
 export default function FundsScreen() {
   const { colors } = useTheme();
   const navigation = useAppNavigation();
+  const { settings } = useAuth();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgAlt }}>
@@ -52,6 +55,7 @@ export default function FundsScreen() {
           subtitle="can see history of your bank accounts"
           onPress={() => navigation.navigate('BankHistory')}
         />
+        <WalletContacts contacts={settings?.walletContacts} />
       </Screen>
     </View>
   );

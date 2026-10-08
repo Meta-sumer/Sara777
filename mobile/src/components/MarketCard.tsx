@@ -7,6 +7,15 @@ import { Card, PlayButton, Row, Txt } from '../ui';
 export function MarketCard({ market, onPlay }: { market: Market; onPlay: () => void }) {
   const { colors } = useTheme();
   const statusColor = market.isPlayable ? colors.success : colors.text;
+  const isMain = market.kind === 'main';
+
+  // main: when open / close bids stop · starline + andar bahar: bids close and the result time
+  const left = isMain
+    ? { label: 'Open Bids :', value: market.openBidsLabel ?? market.openTimeLabel }
+    : { label: 'Bids Close :', value: market.closeBidsLabel ?? market.openTimeLabel };
+  const right = isMain
+    ? { label: 'Close Bids :', value: market.closeBidsLabel ?? market.closeTimeLabel }
+    : { label: 'Result :', value: market.closeTimeLabel };
 
   return (
     <Card>
@@ -22,18 +31,18 @@ export function MarketCard({ market, onPlay }: { market: Market; onPlay: () => v
           <Row style={{ marginTop: 12, gap: 18 }}>
             <View>
               <Txt size={12.5} color={colors.textMuted}>
-                Open Bids :
+                {left.label}
               </Txt>
               <Txt size={12.5} color={colors.textMuted} style={{ marginTop: 2 }}>
-                {market.openTimeLabel}
+                {left.value}
               </Txt>
             </View>
             <View>
               <Txt size={12.5} color={colors.textMuted}>
-                {market.kind === 'starline' ? 'Result :' : 'Close Bids :'}
+                {right.label}
               </Txt>
               <Txt size={12.5} color={colors.textMuted} style={{ marginTop: 2 }}>
-                {market.closeTimeLabel}
+                {right.value}
               </Txt>
             </View>
           </Row>

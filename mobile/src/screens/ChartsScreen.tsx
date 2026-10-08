@@ -3,7 +3,8 @@ import { Feather } from '@expo/vector-icons';
 import { useAppNavigation } from '../navTypes';
 import React, { useEffect, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
-import { type Market, api } from '../api';
+import { type Market, type MarketKind, api } from '../api';
+import { useAuth } from '../auth';
 import { Header } from '../components/Header';
 import { radius, useTheme } from '../theme';
 import { EmptyState, Loader, Row, Txt } from '../ui';
@@ -12,7 +13,9 @@ export default function ChartsScreen() {
   const { colors } = useTheme();
   const navigation = useAppNavigation();
   const [markets, setMarkets] = useState<Market[] | null>(null);
-  const [kind, setKind] = useState<'main' | 'starline'>('main');
+  const [kind, setKind] = useState<MarketKind>('main');
+  const { settings } = useAuth();
+  const kinds: MarketKind[] = settings?.andarBaharEnabled === false ? ['main', 'starline'] : ['main', 'starline', 'andarbahar'];
 
   useEffect(() => {
     setMarkets(null);
@@ -27,7 +30,7 @@ export default function ChartsScreen() {
       <Header title="Charts" back />
 
       <Row style={{ padding: 12, gap: 10 }}>
-        {(['main', 'starline'] as const).map((k) => {
+        {kinds.map((k) => {
           const active = k === kind;
           return (
             <Pressable
@@ -44,7 +47,7 @@ export default function ChartsScreen() {
               }}
             >
               <Txt size={14} weight="700" color={active ? '#FFFFFF' : colors.textMuted}>
-                {k === 'main' ? 'Market Charts' : 'Starline Charts'}
+                {k === 'main' ? 'Market' : k === 'starline' ? 'Starline' : 'Andar Bahar'}
               </Txt>
             </Pressable>
           );

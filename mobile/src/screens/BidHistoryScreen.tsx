@@ -1,7 +1,7 @@
 import { type RouteProp, useRoute } from '@react-navigation/native';
 import React, { useCallback, useEffect, useState } from 'react';
 import { FlatList, RefreshControl, View } from 'react-native';
-import { type Bid, type Paged, api, formatCoins, formatDate } from '../api';
+import { type Bid, type Paged, api, formatCoins, formatDate, payoutFor10 } from '../api';
 import { Header } from '../components/Header';
 import type { AppParamList } from '../navTypes';
 import { useTheme } from '../theme';
@@ -37,7 +37,10 @@ export default function BidHistoryScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgAlt }}>
-      <Header title={kind === 'starline' ? 'Starline Bid History' : 'Bid History'} back />
+      <Header
+        title={kind === 'starline' ? 'Starline Bid History' : kind === 'andarbahar' ? 'Andar Bahar Bid History' : 'Bid History'}
+        back
+      />
       {!data ? (
         <Loader />
       ) : (
@@ -72,7 +75,8 @@ export default function BidHistoryScreen() {
                       Game
                     </Txt>
                     <Txt size={13.5} weight="600" style={{ marginTop: 2 }}>
-                      {item.gameLabel} ({item.session})
+                      {item.gameLabel}
+                      {item.kind === 'main' ? ` (${item.session})` : ''}
                     </Txt>
                   </View>
                   <View>
@@ -111,7 +115,7 @@ export default function BidHistoryScreen() {
                     </Txt>
                   ) : (
                     <Txt size={12} color={colors.textMuted}>
-                      Rate 10 → {10 * item.rate}
+                      Rate 10 → {payoutFor10(item.rate)}
                     </Txt>
                   )}
                 </Row>

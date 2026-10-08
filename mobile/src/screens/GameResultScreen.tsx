@@ -54,7 +54,10 @@ export default function GameResultScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgAlt }}>
-      <Header title={kind === 'starline' ? 'Starline Result' : 'Game Result'} back />
+      <Header
+        title={kind === 'starline' ? 'Starline Result' : kind === 'andarbahar' ? 'Andar Bahar Result' : 'Game Result'}
+        back
+      />
 
       <Row
         style={{
@@ -97,7 +100,7 @@ export default function GameResultScreen() {
                     {item.marketName}
                   </Txt>
                   <Txt size={12} color={colors.textMuted} style={{ marginTop: 4 }}>
-                    {item.openTimeLabel} - {item.closeTimeLabel}
+                    {kind === 'main' ? `${item.openTimeLabel} - ${item.closeTimeLabel}` : `Result: ${item.closeTimeLabel}`}
                   </Txt>
                 </View>
                 <Txt size={16} weight="800" color={colors.primary}>

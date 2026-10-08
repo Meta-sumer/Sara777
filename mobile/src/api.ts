@@ -32,7 +32,21 @@ async function request<T>(method: string, path: string, body?: Body): Promise<T>
   }
 
   const text = await res.text();
-  const data = text ? (JSON.parse(text) as Record<string, unknown>) : {};
+  let data: Record<string, unknown> = {};
+  if (text) {
+    try {
+      data = JSON.parse(text) as Record<string, unknown>;
+    } catch {
+      // the host (not our API) answered with plain text / HTML, e.g. 429 or 503
+      const message =
+        res.status === 429
+          ? 'Too many requests right now. Please wait a minute and try again.'
+          : res.status >= 500
+            ? 'Server is starting up or busy. Please try again in a minute.'
+            : 'Something went wrong';
+      throw new ApiError(message, res.status);
+    }
+  }
   if (!res.ok) {
     throw new ApiError(String(data.message ?? 'Something went wrong'), res.status);
   }
@@ -56,14 +70,21 @@ export interface User {
   createdAt: string;
 }
 
+/** Market kinds: main bazaar markets, King Starline slots, and Andar Bahar draws. */
+export type MarketKind = 'main' | 'starline' | 'andarbahar';
+
 export interface Market {
   id: number;
   name: string;
-  kind: 'main' | 'starline';
+  kind: MarketKind;
   openTime: string;
   closeTime: string;
   openTimeLabel: string;
   closeTimeLabel: string;
+  /** main: open-session bids close · starline / andar bahar: bids open */
+  openBidsLabel?: string;
+  /** main: close-session bids close · starline / andar bahar: bids close */
+  closeBidsLabel?: string;
   status: 'open_running' | 'close_running' | 'closed_today' | 'holiday';
   statusLabel: string;
   isPlayable: boolean;
@@ -111,6 +132,13 @@ export interface FundRequest {
   amount: number;
   method: string | null;
   status: 'pending' | 'approved' | 'rejected';
+  /** exact stage: pending / approved / completed (paid) / failed (processing) / rejected */
+  stage?: string;
+  /** label for the stage: Pending, Approved, Paid, Processing, Declined */
+  statusLabel?: string;
+  payoutMode?: 'bank' | 'paytm' | null;
+  payoutRef?: string | null;
+  completedAt?: string | null;
   utr: string | null;
   proofUrl: string | null;
   remark: string | null;
@@ -139,8 +167,29 @@ export interface PaymentDetails {
   autoApprove: boolean;
 }
 
+export interface NoticeSection {
+  title: string;
+  description: string;
+  contact: string;
+}
+
+export interface HowToPlay {
+  title: string;
+  description: string;
+  videoUrl: string;
+}
+
+export interface WithdrawStatus {
+  open: boolean;
+  message: string;
+  dayName: string;
+  minWithdraw: number;
+}
+
 export interface AppSettings {
   appName: string;
+  /** Andar Bahar switched on from the admin panel */
+  andarBaharEnabled?: boolean;
   whatsappNumber: string;
   supportName: string;
   marquee: string;
@@ -150,6 +199,15 @@ export interface AppSettings {
   minDeposit: number;
   minWithdraw: number;
   payment: PaymentDetails;
+  /** login popup text; shown again whenever newsUpdatedAt changes */
+  news?: string;
+  newsUpdatedAt?: string | null;
+  howToPlay?: HowToPlay;
+  noticeBoard?: NoticeSection[];
+  /** note shown where users edit bank details */
+  profileNote?: string;
+  /** numbers to contact for wallet updates */
+  walletContacts?: string[];
 }
 
 /** Turn a server path like `/uploads/qr-1.png` into a URL the app can load. */
@@ -178,8 +236,14 @@ export interface Paged<T> {
 
 /* ---------------------------------------------------------------- helpers */
 
+/** Coins with Indian grouping; rates like 9.5x can leave .5 amounts. */
 export function formatCoins(n: number) {
-  return n.toLocaleString('en-IN');
+  return Number(n || 0).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+}
+
+/** Payout per 10 points, e.g. rate 9.5 → "95". */
+export function payoutFor10(rate: number) {
+  return String(Math.round(rate * 10 * 100) / 100);
 }
 
 export function formatDateTime(iso: string) {

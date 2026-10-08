@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { type AppSettings, TOKEN_KEY, type User, api } from './api';
+import { deviceInfo } from './device';
 
 interface AuthValue {
   user: User | null;
@@ -10,7 +11,12 @@ interface AuthValue {
   register: (name: string, mobile: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  /** reload app settings (news, notice board, contacts …) from the server */
+  refreshSettings: () => Promise<void>;
   setUser: (u: User) => void;
+  /** set on a fresh login / signup, so the news popup shows once after it */
+  justLoggedIn: boolean;
+  clearJustLoggedIn: () => void;
 }
 
 const AuthContext = createContext<AuthValue>({} as AuthValue);
@@ -19,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [settings, setSettings] = useState<AppSettings | null>(null);
   const [booting, setBooting] = useState(true);
+  const [justLoggedIn, setJustLoggedIn] = useState(false);
 
   const loadSettings = useCallback(async () => {
     try {
@@ -44,17 +51,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [loadSettings]);
 
-  const login = useCallback(async (mobile: string, password: string) => {
-    const res = await api.post<{ token: string; user: User }>('/auth/login', { mobile, password });
-    await AsyncStorage.setItem(TOKEN_KEY, res.token);
-    setUser(res.user);
-  }, []);
+  const login = useCallback(
+    async (mobile: string, password: string) => {
+      const device = await deviceInfo();
+      const res = await api.post<{ token: string; user: User }>('/auth/login', { mobile, password, ...device });
+      await AsyncStorage.setItem(TOKEN_KEY, res.token);
+      await loadSettings();
+      setJustLoggedIn(true);
+      setUser(res.user);
+    },
+    [loadSettings],
+  );
 
-  const register = useCallback(async (name: string, mobile: string, password: string) => {
-    const res = await api.post<{ token: string; user: User }>('/auth/register', { name, mobile, password });
-    await AsyncStorage.setItem(TOKEN_KEY, res.token);
-    setUser(res.user);
-  }, []);
+  const register = useCallback(
+    async (name: string, mobile: string, password: string) => {
+      const device = await deviceInfo();
+      const res = await api.post<{ token: string; user: User }>('/auth/register', {
+        name,
+        mobile,
+        password,
+        ...device,
+      });
+      await AsyncStorage.setItem(TOKEN_KEY, res.token);
+      await loadSettings();
+      setJustLoggedIn(true);
+      setUser(res.user);
+    },
+    [loadSettings],
+  );
+
+  const clearJustLoggedIn = useCallback(() => setJustLoggedIn(false), []);
 
   const logout = useCallback(async () => {
     await AsyncStorage.removeItem(TOKEN_KEY);
@@ -71,8 +97,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<AuthValue>(
-    () => ({ user, settings, booting, login, register, logout, refreshUser, setUser }),
-    [user, settings, booting, login, register, logout, refreshUser],
+    () => ({
+      user,
+      settings,
+      booting,
+      login,
+      register,
+      logout,
+      refreshUser,
+      refreshSettings: loadSettings,
+      setUser,
+      justLoggedIn,
+      clearJustLoggedIn,
+    }),
+    [user, settings, booting, login, register, logout, refreshUser, loadSettings, justLoggedIn, clearJustLoggedIn],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

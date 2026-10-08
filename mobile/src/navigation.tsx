@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useAuth } from './auth';
 import type { AppParamList } from './navTypes';
 import { radius, useTheme } from './theme';
+import { NewsPopup } from './components/NewsPopup';
 import { Loader, Row, Txt } from './ui';
 
 import LoginScreen from './screens/LoginScreen';
@@ -19,6 +20,8 @@ import RegisterScreen from './screens/RegisterScreen';
 import ForgotPasswordScreen from './screens/ForgotPasswordScreen';
 import HomeScreen from './screens/HomeScreen';
 import StarlineScreen from './screens/StarlineScreen';
+import AndarBaharScreen from './screens/AndarBaharScreen';
+import HowToPlayScreen from './screens/HowToPlayScreen';
 import GamePlayScreen from './screens/GamePlayScreen';
 import PlaceBidScreen from './screens/PlaceBidScreen';
 import MyBidsScreen from './screens/MyBidsScreen';
@@ -166,6 +169,8 @@ const DRAWER_ITEMS: Array<{
   { label: 'WhatsApp', icon: 'message-circle', lib: 'feather', tab: 'Support' },
   { label: 'Funds', icon: 'bank', lib: 'mci', tab: 'Funds' },
   { label: 'Notifications', icon: 'bell', lib: 'feather', route: 'Notifications' },
+  { label: 'Andar Bahar', icon: 'cards-diamond-outline', lib: 'mci', route: 'AndarBahar' },
+  { label: 'How to Play', icon: 'help-circle', lib: 'feather', route: 'HowToPlay' },
   { label: 'Videos', icon: 'play', lib: 'feather', route: 'Videos' },
   { label: 'Notice Board / Rules', icon: 'alert-circle', lib: 'feather', route: 'Notice' },
   { label: 'Game Rates', icon: 'clock', lib: 'feather', route: 'GameRates' },
@@ -179,6 +184,8 @@ function DrawerContent({ navigation }: DrawerContentComponentProps) {
   const { colors, isDark, toggleTheme } = useTheme();
   const insets = useSafeAreaInsets();
   const { user, logout, settings } = useAuth();
+  // Andar Bahar is hidden while the admin has it switched off
+  const items = DRAWER_ITEMS.filter((item) => item.route !== 'AndarBahar' || settings?.andarBaharEnabled !== false);
 
   const go = (item: (typeof DRAWER_ITEMS)[number]) => {
     navigation.closeDrawer();
@@ -234,7 +241,7 @@ function DrawerContent({ navigation }: DrawerContentComponentProps) {
       </Row>
 
       <ScrollView contentContainerStyle={{ paddingVertical: 8 }}>
-        {DRAWER_ITEMS.map((item) => (
+        {items.map((item) => (
           <Pressable
             key={item.label}
             onPress={() => go(item)}
@@ -349,6 +356,8 @@ function AppStack() {
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Drawer" component={DrawerNavigator} />
       <Stack.Screen name="Starline" component={StarlineScreen} />
+      <Stack.Screen name="AndarBahar" component={AndarBaharScreen} />
+      <Stack.Screen name="HowToPlay" component={HowToPlayScreen} />
       <Stack.Screen name="GamePlay" component={GamePlayScreen} />
       <Stack.Screen name="PlaceBid" component={PlaceBidScreen} />
       <Stack.Screen name="BidHistory" component={BidHistoryScreen} />
@@ -397,6 +406,7 @@ export function RootNavigation() {
       }}
     >
       {booting ? <Loader /> : user ? <AppStack /> : <AuthStack />}
+      {user ? <NewsPopup /> : null}
     </NavigationContainer>
   );
 }

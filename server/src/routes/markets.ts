@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { db } from '../db.js';
-import { parseKind, todayStr } from '../game.js';
+import { formatTime12, parseKind, todayStr } from '../game.js';
 import { allRates } from '../rates.js';
 import { formatResult, getResult } from '../results.js';
 import { type MarketRow, andarBaharEnabled, marketState, resultTimes } from '../schedule.js';
@@ -25,6 +25,11 @@ function serialize(m: MarketRow, date: string) {
     closeTime: times.close,
     openTimeLabel: times.openLabel,
     closeTimeLabel: times.closeLabel,
+    // betting cut-offs from today's timetable
+    //   main: open-session bids close / close-session bids close
+    //   starline / andar bahar: bids open / bids close
+    openBidsLabel: formatTime12(state.schedule.open_bet_time),
+    closeBidsLabel: formatTime12(state.schedule.close_bet_time),
     days: runningDays,
     status: state.status,
     statusLabel: state.label,

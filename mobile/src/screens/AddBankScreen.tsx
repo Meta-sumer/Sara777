@@ -2,6 +2,8 @@ import { useAppNavigation } from '../navTypes';
 import React, { useEffect, useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { ApiError, type BankDetails, api } from '../api';
+import { useAuth } from '../auth';
+import { ProfileNote } from '../components/AppContent';
 import { Header } from '../components/Header';
 import { useTheme } from '../theme';
 import { Card, Field, PrimaryButton, Screen, Txt } from '../ui';
@@ -9,6 +11,7 @@ import { Card, Field, PrimaryButton, Screen, Txt } from '../ui';
 export default function AddBankScreen() {
   const { colors } = useTheme();
   const navigation = useAppNavigation();
+  const { settings } = useAuth();
   const [form, setForm] = useState({
     holderName: '',
     bankName: '',
@@ -60,6 +63,7 @@ export default function AddBankScreen() {
     >
       <Header title="Add Bank Details" back />
       <Screen scroll>
+        <ProfileNote note={settings?.profileNote} />
         <Card>
           <Txt size={14} weight="700" style={{ marginBottom: 12 }}>
             Bank account

@@ -3,7 +3,7 @@ import { type RouteProp, useRoute } from '@react-navigation/native';
 import { useAppNavigation } from '../navTypes';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Alert, Pressable, ScrollView, View } from 'react-native';
-import { type GameTypeInfo, type Market, api } from '../api';
+import { type GameTypeInfo, type Market, api, payoutFor10 } from '../api';
 import { Header } from '../components/Header';
 import type { AppParamList } from '../navTypes';
 import { radius, useTheme } from '../theme';
@@ -12,6 +12,8 @@ import { Card, Loader, Pill, Row, Txt } from '../ui';
 const GAME_ICONS: Record<string, string> = {
   single_digit: 'numeric-1-box-outline',
   jodi_digit: 'numeric-2-box-multiple-outline',
+  red_bracket: 'numeric-2-box-multiple',
+  ab_jodi: 'cards-diamond-outline',
   single_panna: 'cards-outline',
   double_panna: 'cards',
   triple_panna: 'cards-playing-outline',
@@ -94,12 +96,25 @@ export default function GamePlayScreen() {
             {market.result}
           </Txt>
           <Row style={{ marginTop: 10, gap: 20 }}>
-            <Txt size={12.5} color={colors.textMuted}>
-              Open : {market.openTimeLabel}
-            </Txt>
-            <Txt size={12.5} color={colors.textMuted}>
-              {market.kind === 'starline' ? 'Result' : 'Close'} : {market.closeTimeLabel}
-            </Txt>
+            {market.kind === 'main' ? (
+              <>
+                <Txt size={12.5} color={colors.textMuted}>
+                  Open : {market.openTimeLabel}
+                </Txt>
+                <Txt size={12.5} color={colors.textMuted}>
+                  Close : {market.closeTimeLabel}
+                </Txt>
+              </>
+            ) : (
+              <>
+                <Txt size={12.5} color={colors.textMuted}>
+                  Bids Close : {market.closeBidsLabel ?? market.openTimeLabel}
+                </Txt>
+                <Txt size={12.5} color={colors.textMuted}>
+                  Result : {market.closeTimeLabel}
+                </Txt>
+              </>
+            )}
           </Row>
         </Card>
 
@@ -144,7 +159,7 @@ export default function GamePlayScreen() {
                 {game.label}
               </Txt>
               <Txt size={11.5} color={colors.textMuted} style={{ marginTop: 3 }}>
-                10 → {10 * game.rate}
+                10 → {payoutFor10(game.rate)}
               </Txt>
             </Pressable>
           ))}

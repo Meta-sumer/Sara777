@@ -13,7 +13,8 @@ import { EmptyState, Loader, Marquee, Row, Txt } from '../ui';
 export default function HomeScreen() {
   const { colors } = useTheme();
   const navigation = useAppNavigation();
-  const { settings, refreshUser } = useAuth();
+  const { settings, refreshUser, refreshSettings } = useAuth();
+  const showAndarBahar = settings?.andarBaharEnabled !== false;
   const [markets, setMarkets] = useState<Market[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -33,7 +34,8 @@ export default function HomeScreen() {
     useCallback(() => {
       load();
       refreshUser();
-    }, [load, refreshUser]),
+      refreshSettings();
+    }, [load, refreshUser, refreshSettings]),
   );
 
   // markets flip between open/closed on the clock — keep the list honest
@@ -44,7 +46,7 @@ export default function HomeScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([load(), refreshUser()]);
+    await Promise.all([load(), refreshUser(), refreshSettings()]);
     setRefreshing(false);
   };
 
@@ -76,41 +78,55 @@ export default function HomeScreen() {
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
           }
           ListHeaderComponent={
-            <Pressable
-              onPress={() => navigation.navigate('Starline')}
-              style={({ pressed }) => ({
-                backgroundColor: colors.primary,
-                borderRadius: radius.pill,
-                paddingVertical: 14,
-                paddingHorizontal: 16,
-                marginBottom: 16,
-                opacity: pressed ? 0.9 : 1,
-              })}
-            >
-              <Row>
-                <View
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 21,
-                    backgroundColor: '#FFFFFF',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
-                >
-                  <Ionicons name="play" size={20} color={colors.primary} style={{ marginLeft: 3 }} />
-                </View>
-                <Txt size={22} weight="800" color="#FFFFFF" style={{ flex: 1, textAlign: 'center' }}>
-                  King Starline
-                </Txt>
-                <View style={{ width: 42 }} />
-              </Row>
-            </Pressable>
+            <View style={{ marginBottom: 4 }}>
+              <GameBanner title="King Starline" onPress={() => navigation.navigate('Starline')} />
+              {showAndarBahar ? (
+                <GameBanner title="Andar Bahar" dark onPress={() => navigation.navigate('AndarBahar')} />
+              ) : null}
+            </View>
           }
           renderItem={({ item }) => <MarketCard market={item} onPlay={() => openMarket(item)} />}
           ListEmptyComponent={<EmptyState icon="calendar" text="No markets available right now" />}
         />
       )}
     </View>
+  );
+}
+
+/** Big pill button on Home that opens a game list (King Starline, Andar Bahar). */
+function GameBanner({ title, onPress, dark = false }: { title: string; onPress: () => void; dark?: boolean }) {
+  const { colors } = useTheme();
+  const bg = dark ? colors.primaryDark : colors.primary;
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({
+        backgroundColor: bg,
+        borderRadius: radius.pill,
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        marginBottom: 12,
+        opacity: pressed ? 0.9 : 1,
+      })}
+    >
+      <Row>
+        <View
+          style={{
+            width: 42,
+            height: 42,
+            borderRadius: 21,
+            backgroundColor: '#FFFFFF',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Ionicons name="play" size={20} color={bg} style={{ marginLeft: 3 }} />
+        </View>
+        <Txt size={22} weight="800" color="#FFFFFF" style={{ flex: 1, textAlign: 'center' }}>
+          {title}
+        </Txt>
+        <View style={{ width: 42 }} />
+      </Row>
+    </Pressable>
   );
 }

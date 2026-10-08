@@ -3,7 +3,7 @@ import { type RouteProp, useRoute } from '@react-navigation/native';
 import { useAppNavigation } from '../navTypes';
 import React, { useMemo, useState } from 'react';
 import { Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, View } from 'react-native';
-import { ApiError, api, formatCoins } from '../api';
+import { ApiError, api, formatCoins, payoutFor10 } from '../api';
 import { useAuth } from '../auth';
 import { Header } from '../components/Header';
 import type { AppParamList } from '../navTypes';
@@ -18,6 +18,11 @@ interface Entry {
 
 const MIN_BID = 10;
 
+/** Jodis played as "Red Brackets": both digits equal or five apart (00, 05, 11, 16 …). */
+const RED_JODIS = Array.from({ length: 100 }, (_, n) => String(n).padStart(2, '0')).filter(
+  (j) => j[0] === j[1] || Math.abs(Number(j[0]) - Number(j[1])) === 5,
+);
+
 function pannaKind(p: string) {
   const uniq = new Set(p.split('')).size;
   return uniq === 3 ? 'single' : uniq === 2 ? 'double' : 'triple';
@@ -30,6 +35,10 @@ function validatePick(gameType: string, pick: string): string | null {
       return /^[0-9]$/.test(pick) ? null : 'Choose a digit between 0 and 9';
     case 'jodi_digit':
       return /^[0-9]{2}$/.test(pick) ? null : 'Jodi must be 2 digits (00-99)';
+    case 'ab_jodi':
+      return /^[0-9]{2}$/.test(pick) ? null : 'Enter a 2 digit number (00-99)';
+    case 'red_bracket':
+      return RED_JODIS.includes(pick) ? null : 'Choose one of the red bracket numbers';
     case 'single_panna':
       return /^[0-9]{3}$/.test(pick) && pannaKind(pick) === 'single'
         ? null
@@ -63,7 +72,7 @@ export default function PlaceBidScreen() {
   const { colors } = useTheme();
   const navigation = useAppNavigation();
   const route = useRoute<RouteProp<AppParamList, 'PlaceBid'>>();
-  const { marketId, marketName, gameType, gameLabel, rate, sessions } = route.params;
+  const { marketId, marketName, kind, gameType, gameLabel, rate, sessions } = route.params;
   const { user, refreshUser } = useAuth();
 
   const [session, setSession] = useState<'open' | 'close'>(sessions[0]);
@@ -76,6 +85,8 @@ export default function PlaceBidScreen() {
 
   const isSangam = gameType === 'half_sangam' || gameType === 'full_sangam';
   const isSingleDigit = gameType === 'single_digit';
+  const isRedBracket = gameType === 'red_bracket';
+  const isTwoDigit = gameType === 'jodi_digit' || gameType === 'ab_jodi';
 
   const currentPick = isSangam ? `${left}-${right}` : digit;
   const total = useMemo(() => entries.reduce((sum, e) => sum + e.amount, 0), [entries]);
@@ -106,7 +117,7 @@ export default function PlaceBidScreen() {
     if (entries.length === 0) return Alert.alert('Bids', 'Add at least one bid first');
     Alert.alert(
       'Confirm bids',
-      `${marketName}\n${gameLabel} (${session})\n\nBids: ${entries.length}\nTotal points: ${formatCoins(total)}`,
+      `${marketName}\n${gameLabel}${kind === 'main' ? ` (${session})` : ''}\n\nBids: ${entries.length}\nTotal points: ${formatCoins(total)}`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Submit', onPress: doSubmit },
@@ -146,7 +157,7 @@ export default function PlaceBidScreen() {
               {marketName}
             </Txt>
             <Txt size={13} weight="700" color={colors.primary}>
-              10 → {10 * rate}
+              10 → {payoutFor10(rate)}
             </Txt>
           </Row>
 
@@ -175,11 +186,11 @@ export default function PlaceBidScreen() {
                 );
               })}
             </Row>
-          ) : (
+          ) : kind === 'main' ? (
             <Txt size={13} color={colors.textMuted} style={{ marginBottom: 12 }}>
               Session: {session.toUpperCase()}
             </Txt>
-          )}
+          ) : null}
 
           {isSingleDigit ? (
             <View style={{ marginBottom: 12 }}>
@@ -212,6 +223,37 @@ export default function PlaceBidScreen() {
                 })}
               </Row>
             </View>
+          ) : isRedBracket ? (
+            <View style={{ marginBottom: 12 }}>
+              <Txt size={13} weight="600" color={colors.textMuted} style={{ marginBottom: 8 }}>
+                Choose Red Bracket
+              </Txt>
+              <Row style={{ flexWrap: 'wrap', gap: 8 }}>
+                {RED_JODIS.map((j) => {
+                  const active = digit === j;
+                  return (
+                    <Pressable
+                      key={j}
+                      onPress={() => setDigit(j)}
+                      style={{
+                        width: 52,
+                        height: 44,
+                        borderRadius: radius.md,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        backgroundColor: active ? colors.primary : colors.bgAlt,
+                        borderWidth: 1,
+                        borderColor: active ? colors.primary : colors.border,
+                      }}
+                    >
+                      <Txt size={16} weight="700" color={active ? '#FFFFFF' : colors.text}>
+                        {j}
+                      </Txt>
+                    </Pressable>
+                  );
+                })}
+              </Row>
+            </View>
           ) : isSangam ? (
             <Row style={{ gap: 10 }}>
               <Field
@@ -235,10 +277,10 @@ export default function PlaceBidScreen() {
             </Row>
           ) : (
             <Field
-              label={gameType === 'jodi_digit' ? 'Jodi (00-99)' : 'Panna (3 digits)'}
-              placeholder={gameType === 'jodi_digit' ? '46' : '128'}
+              label={gameType === 'ab_jodi' ? 'Number (00-99)' : isTwoDigit ? 'Jodi (00-99)' : 'Panna (3 digits)'}
+              placeholder={isTwoDigit ? '46' : '128'}
               keyboardType="number-pad"
-              maxLength={gameType === 'jodi_digit' ? 2 : 3}
+              maxLength={isTwoDigit ? 2 : 3}
               value={digit}
               onChangeText={setDigit}
             />
@@ -264,7 +306,7 @@ export default function PlaceBidScreen() {
           entries.length ? (
             <Row style={{ justifyContent: 'space-between', marginBottom: 8, paddingHorizontal: 4 }}>
               <Txt size={13} weight="700" color={colors.textMuted}>
-                Digit / Panna
+                {isTwoDigit || isRedBracket ? 'Number' : 'Digit / Panna'}
               </Txt>
               <Txt size={13} weight="700" color={colors.textMuted}>
                 Points

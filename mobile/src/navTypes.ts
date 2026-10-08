@@ -1,23 +1,26 @@
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MarketKind } from './api';
 
 /** Every route reachable with `navigate` from anywhere in the app. */
 export type AppParamList = {
   // stack
   Drawer: undefined;
   Starline: undefined;
-  GamePlay: { marketId: number; marketName: string; kind: 'main' | 'starline' };
+  AndarBahar: undefined;
+  HowToPlay: undefined;
+  GamePlay: { marketId: number; marketName: string; kind: MarketKind };
   PlaceBid: {
     marketId: number;
     marketName: string;
-    kind: 'main' | 'starline';
+    kind: MarketKind;
     gameType: string;
     gameLabel: string;
     rate: number;
     sessions: Array<'open' | 'close'>;
   };
-  BidHistory: { kind: 'main' | 'starline' };
-  GameResult: { kind: 'main' | 'starline' };
+  BidHistory: { kind: MarketKind };
+  GameResult: { kind: MarketKind };
   AddFund: undefined;
   WithdrawFund: undefined;
   AddBank: undefined;
@@ -28,7 +31,7 @@ export type AppParamList = {
   Notice: undefined;
   GameRates: undefined;
   Charts: undefined;
-  ChartDetail: { marketId: number; marketName: string; kind: 'main' | 'starline' };
+  ChartDetail: { marketId: number; marketName: string; kind: MarketKind };
   SubmitIdea: undefined;
   Settings: undefined;
   Mpin: undefined;
