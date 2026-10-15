@@ -29,6 +29,21 @@ bash deploy/deploy.sh
 It builds on the server, keeps the database and `.env`, restarts the service and checks the health
 URL. The previous build stays in `/opt/rama777/app.old` until the next deploy.
 
+### Or: push to GitHub, pull on the VPS, deploy
+
+The VPS has a clone of this repo in `/opt/rama777/repo` (public repo, so pulling needs no login).
+
+```bash
+git push origin admin-panel-v2                      # 1. on your PC
+ssh rama777                                         # 2. log in to the VPS (alias in ~/.ssh/config)
+cd /opt/rama777/repo && git pull                    # 3. get the pushed code
+bash deploy/server-deploy.sh                        # 4. build, swap in, restart, health check
+```
+
+Only committed and pushed code is deployed this way; `deploy.sh` also sends uncommitted changes.
+Both run the same `deploy/server-deploy.sh`. If the new build does not start, it puts the previous
+one back by itself.
+
 ## Publish a new APK
 
 After a release build (`mobile/android/app/build/outputs/apk/release/app-release.apk`):
