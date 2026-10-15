@@ -8,6 +8,7 @@ and never touches its files.
 | --- | --- |
 | Admin panel | https://rama777.tech/admin (`https://rama777.tech` redirects there) |
 | API (used by the app) | https://rama777.tech/api |
+| Android app download | https://rama777.tech/download/Rama777.apk (files in `/www/wwwroot/rama777.tech/download`) |
 | Code | `/opt/rama777/app` (`server/` + `admin/`), owned by the `rama777` user |
 | Database and uploads | `/opt/rama777/app/server/data` (`matka.db`, `uploads/`) |
 | Settings | `/opt/rama777/app/server/.env` (admin login, secrets, `AUTO_DECLARE`) |
@@ -27,6 +28,21 @@ bash deploy/deploy.sh
 
 It builds on the server, keeps the database and `.env`, restarts the service and checks the health
 URL. The previous build stays in `/opt/rama777/app.old` until the next deploy.
+
+## Publish a new APK
+
+After a release build (`mobile/android/app/build/outputs/apk/release/app-release.apk`):
+
+```bash
+V=1.2.0   # the new versionName
+scp -i ~/.ssh/rama777_vps mobile/android/app/build/outputs/apk/release/app-release.apk \
+  root@200.234.44.48:/www/wwwroot/rama777.tech/download/Rama777-v$V.apk
+ssh -i ~/.ssh/rama777_vps root@200.234.44.48 \
+  "cd /www/wwwroot/rama777.tech/download && cp -f Rama777-v$V.apk Rama777.apk"
+```
+
+The share link `https://rama777.tech/download/Rama777.apk` then serves the new version; older
+`Rama777-vX.Y.Z.apk` files stay downloadable by their own name.
 
 ## Day-to-day commands (on the VPS)
 
