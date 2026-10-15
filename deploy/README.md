@@ -20,18 +20,8 @@ and never touches its files.
 
 ## Update the live site
 
-From the repo root, with the deploy SSH key in `~/.ssh/rama777_vps`:
-
-```bash
-bash deploy/deploy.sh
-```
-
-It builds on the server, keeps the database and `.env`, restarts the service and checks the health
-URL. The previous build stays in `/opt/rama777/app.old` until the next deploy.
-
-### Or: push to GitHub, pull on the VPS, deploy
-
-The VPS has a clone of this repo in `/opt/rama777/repo` (public repo, so pulling needs no login).
+Code always reaches the server through GitHub: commit, push, then the VPS pulls it. The VPS has a
+clone of this repo in `/opt/rama777/repo` (public repo, so pulling needs no login).
 
 ```bash
 git push origin admin-panel-v2                      # 1. on your PC
@@ -40,9 +30,12 @@ cd /opt/rama777/repo && git pull                    # 3. get the pushed code
 bash deploy/server-deploy.sh                        # 4. build, swap in, restart, health check
 ```
 
-Only committed and pushed code is deployed this way; `deploy.sh` also sends uncommitted changes.
-Both run the same `deploy/server-deploy.sh`. If the new build does not start, it puts the previous
-one back by itself.
+Or after step 1, steps 2 to 4 in one go from the repo root on your PC: `bash deploy/deploy.sh`.
+It refuses to run while `server/`, `admin/` or `deploy/` have uncommitted or unpushed changes.
+
+`server-deploy.sh` also refuses to build if the server clone differs from GitHub. It keeps the
+database and `.env`, restarts the service, and puts the previous build back by itself if the new
+one does not start. The previous build stays in `/opt/rama777/app.old` until the next deploy.
 
 ## Publish a new APK
 
