@@ -2,13 +2,14 @@ import React, { useState } from 'react';
 import { Alert, KeyboardAvoidingView, Platform, View } from 'react-native';
 import { ApiError, type User, api, formatCoins } from '../api';
 import { useAuth } from '../auth';
+import { ProfileNote } from '../components/AppContent';
 import { Header } from '../components/Header';
 import { useTheme } from '../theme';
 import { Card, Field, PrimaryButton, Row, Screen, Txt } from '../ui';
 
 export default function ProfileScreen() {
   const { colors } = useTheme();
-  const { user, setUser } = useAuth();
+  const { user, setUser, settings } = useAuth();
   const [name, setName] = useState(user?.name ?? '');
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -73,6 +74,8 @@ export default function ProfileScreen() {
             </View>
           </Row>
         </Card>
+
+        <ProfileNote note={settings?.profileNote} />
 
         <Card>
           <Field label="Name" icon="user" value={name} onChangeText={setName} />

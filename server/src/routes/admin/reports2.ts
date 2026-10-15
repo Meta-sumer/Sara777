@@ -69,8 +69,8 @@ const BOTH_IN = BOTH_SESSION_TYPES.map(() => '?').join(',');
 
 /**
  * Session shown for a bid: main-market jodi / red bracket / sangam bids are
- * decided by the close result, so they read "close". Starline and Andar Bahar
- * have no sessions (null).
+ * decided by the close result, so they read "close". Starline bids have no
+ * sessions (null).
  */
 function sessionOf(kind: unknown, type: unknown, session: unknown): 'open' | 'close' | null {
   if (kind !== 'main') return null;
@@ -94,7 +94,7 @@ function sessionScope(session: string, a = 'b'): { sql: string; params: P[] } | 
   return null;
 }
 
-/** ?game= '' (all), 'kind:main|starline|andarbahar', or a market id. */
+/** ?game= '' (all), 'kind:main|starline', or a market id. */
 function gameScope(value: string, a = 'b'): { sql: string; params: P[]; marketId: number | null; kind: Kind | null } {
   if (value.startsWith('kind:')) {
     const kind = value.slice(5) as Kind;
@@ -165,7 +165,7 @@ function amtText(n: unknown) {
 /** Markets and game types for the report filters. */
 reports2Router.get('/r2-options', requirePerm(...ANY_REPORT), (_req, res) => {
   const markets = all<{ id: number; name: string; kind: string; is_active: number }>(
-    'SELECT id, name, kind, is_active FROM markets ORDER BY sort_order, id',
+    "SELECT id, name, kind, is_active FROM markets WHERE kind IN ('main', 'starline') ORDER BY sort_order, id",
   );
   res.json({
     markets: markets.map((m) => ({ id: m.id, name: m.name, kind: m.kind, isActive: !!m.is_active })),

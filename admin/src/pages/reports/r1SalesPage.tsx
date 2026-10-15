@@ -1,4 +1,4 @@
-/* Sales Report, Starline Sales Report and Andar Bahar Sales Report: bidding vs
+/* Sales Report and Starline Sales Report: bidding vs
    winning points for one market kind over a date range, as one range row (as
    in the reference) plus a provider-wise breakdown when "All" is selected. */
 import { useMemo } from 'react';
@@ -43,7 +43,7 @@ export function SalesPage({
   title,
   exportName,
 }: {
-  kind: 'main' | 'starline' | 'andarbahar';
+  kind: 'main' | 'starline';
   endpoint: string;
   title: string;
   exportName: string;

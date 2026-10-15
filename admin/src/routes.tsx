@@ -28,8 +28,6 @@ import { JodiAll } from './pages/reports/JodiAll';
 import { SalesReport } from './pages/reports/SalesReport';
 import { SalesSummary } from './pages/reports/SalesSummary';
 import { StarlineSales } from './pages/reports/StarlineSales';
-import { AbSales } from './pages/reports/AbSales';
-import { AbBids } from './pages/reports/AbBids';
 import { FundReport } from './pages/reports/FundReport';
 import { FundReport2 } from './pages/reports/FundReport2';
 import { UpiFundReport } from './pages/reports/UpiFundReport';
@@ -66,12 +64,6 @@ export const ROUTES: Record<string, ReactElement> = {
   'starline/pnl': <GamePnl kind="starline" />,
   'starline/result': <GameResult kind="starline" />,
 
-  'andarbahar/provider': <GameProvider kind="andarbahar" />,
-  'andarbahar/setting': <GameSetting kind="andarbahar" />,
-  'andarbahar/rates': <GameRates kind="andarbahar" />,
-  'andarbahar/pnl': <GamePnl kind="andarbahar" />,
-  'andarbahar/result': <GameResult kind="andarbahar" />,
-
   'bookie/oc': <BookieCorner variant="oc" />,
   'bookie/final': <BookieCorner variant="final" />,
   'bookie/cutting': <BookieCorner variant="cutting" />,
@@ -92,8 +84,6 @@ export const ROUTES: Record<string, ReactElement> = {
   'reports/sales': <SalesReport />,
   'reports/sales-summary': <SalesSummary />,
   'reports/starline-sales': <StarlineSales />,
-  'reports/ab-sales': <AbSales />,
-  'reports/ab-bids': <AbBids />,
   'reports/fund': <FundReport />,
   'reports/fund2': <FundReport2 />,
   'reports/upi-fund': <UpiFundReport />,

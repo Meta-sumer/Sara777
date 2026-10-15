@@ -1,7 +1,7 @@
-export type Kind = 'main' | 'starline' | 'andarbahar';
+export type Kind = 'main' | 'starline';
 export type Session = 'open' | 'close';
 
-export const KINDS: Kind[] = ['main', 'starline', 'andarbahar'];
+export const KINDS: Kind[] = ['main', 'starline'];
 
 export function parseKind(value: unknown, fallback: Kind = 'main'): Kind {
   return KINDS.includes(value as Kind) ? (value as Kind) : fallback;
@@ -15,8 +15,7 @@ export type GameTypeKey =
   | 'double_panna'
   | 'triple_panna'
   | 'half_sangam'
-  | 'full_sangam'
-  | 'ab_jodi';
+  | 'full_sangam';
 
 export interface GameTypeDef {
   key: GameTypeKey;
@@ -31,7 +30,7 @@ export interface GameTypeDef {
 
 /**
  * Default rates follow the reference panel: main market single digit pays
- * 9.5x and jodi 95x, Starline pays 10 / 160 / 320 / 1000, Andar Bahar jodi 100x.
+ * 9.5x and jodi 95x, Starline pays 10 / 160 / 320 / 1000.
  * Admins change them on the Game Rates pages; bids keep the rate they were placed at.
  */
 export const GAME_TYPES: GameTypeDef[] = [
@@ -43,7 +42,6 @@ export const GAME_TYPES: GameTypeDef[] = [
   { key: 'triple_panna', label: 'Triple Panna', rates: { main: 900, starline: 1000 }, sessions: ['open', 'close'] },
   { key: 'half_sangam', label: 'Half Sangam', rates: { main: 1000 }, sessions: 'both' },
   { key: 'full_sangam', label: 'Full Sangam', rates: { main: 10000 }, sessions: 'both' },
-  { key: 'ab_jodi', label: 'Jodi', rates: { andarbahar: 100 }, sessions: ['open'] },
 ];
 
 export function gameType(key: string): GameTypeDef | undefined {
@@ -166,8 +164,6 @@ export function validatePick(type: GameTypeKey, pick: string): string | null {
       return RE.jodi.test(pick) ? null : 'Jodi must be two digits (00-99)';
     case 'red_bracket':
       return RED_JODIS.includes(pick) ? null : `Red bracket must be one of ${RED_JODIS.join(', ')}`;
-    case 'ab_jodi':
-      return RE.jodi.test(pick) ? null : 'Andar Bahar number must be two digits (00-99)';
     case 'single_panna':
       return RE.panna.test(pick) && pannaType(pick) === 'single' ? null : 'Invalid single panna';
     case 'double_panna':
@@ -201,8 +197,6 @@ export interface ResultRow {
   open_digit: string | null;
   close_panna: string | null;
   close_digit: string | null;
-  /** Andar Bahar: the declared two-digit number */
-  number?: string | null;
 }
 
 /**
@@ -235,9 +229,6 @@ export function isWinner(
     case 'red_bracket':
       if (!openReady || !closeReady) return null;
       return pick === String(r.open_digit) + String(r.close_digit);
-
-    case 'ab_jodi':
-      return r.number ? pick === r.number : null;
 
     case 'half_sangam': {
       if (!openReady || !closeReady) return null;
@@ -283,10 +274,6 @@ export type MarketStatus = 'closed_today' | 'open_running' | 'close_running' | '
 
 export function randomPanna(): string {
   return ALL_PANNAS[Math.floor(Math.random() * ALL_PANNAS.length)];
-}
-
-export function randomJodi(): string {
-  return String(Math.floor(Math.random() * 100)).padStart(2, '0');
 }
 
 export function todayStr(d = new Date()): string {

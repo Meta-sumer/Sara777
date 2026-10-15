@@ -7,11 +7,11 @@
  *               close_bet_time   close-session bets close (CBT)
  *               open_result_time open result is published (OBRT)
  *               close_result_time close result is published (CBRT)
- *   starline /  open_bet_time    betting opens (OBT)
- *   andarbahar  close_bet_time   betting closes (CBT)
+ *   starline    open_bet_time    betting opens (OBT)
+ *               close_bet_time   betting closes (CBT)
  *               open_result_time the single result (RSLT)
  */
-import { db, getSetting } from './db.js';
+import { db } from './db.js';
 import {
   type Kind,
   type MarketStatus,
@@ -49,12 +49,12 @@ export const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday'
 
 /** minutes main-market bets close before each result */
 export const MAIN_BET_CUTOFF = 10;
-/** minutes starline / andar bahar bets close before the result */
+/** minutes starline bets close before the result */
 export const SLOT_BET_CUTOFF = 5;
 
 /**
  * Timetable a market starts with, built from its default times.
- * `opensAt` is when a starline / andar bahar slot starts taking bets
+ * `opensAt` is when a starline slot starts taking bets
  * (the previous slot's result + 1 minute); it defaults to 00:01.
  */
 export function defaultTimes(kind: Kind, openTime: string, closeTime: string, opensAt = '00:01'): ScheduleTimes {
@@ -119,7 +119,7 @@ export function ensureSchedule(m: MarketRow, opensAt?: string) {
 }
 
 /**
- * When a new starline / andar bahar slot starts taking bets: one minute after
+ * When a new starline slot starts taking bets: one minute after
  * the result of the slot before it (same kind, by result time), or 00:01.
  */
 export function slotOpensAt(kind: Kind, resultTime: string, excludeId = 0): string {
@@ -134,8 +134,7 @@ const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
 /**
  * Check one day's times before saving them. Returns an error message or null.
  *   main        OBT ≤ OBRT ≤ CBT ≤ CBRT, and OBT before CBT
- *   starline /  OBT (betting opens) < CBT (betting closes) ≤ RSLT
- *   andarbahar
+ *   starline    OBT (betting opens) < CBT (betting closes) ≤ RSLT
  * A timetable never crosses midnight: marketState compares minutes of one day.
  */
 export function checkTimes(kind: Kind, t: ScheduleTimes): string | null {
@@ -169,7 +168,7 @@ export function checkTimes(kind: Kind, t: ScheduleTimes): string | null {
 }
 
 /**
- * Give every market a timetable. Starline / andar bahar slots of the same kind
+ * Give every market a timetable. Starline slots
  * open one minute after the previous slot's result, like the reference panel.
  */
 export function ensureAllSchedules() {
@@ -213,17 +212,12 @@ export interface MarketState {
   schedule: ScheduleRow;
 }
 
-/** Whether Andar Bahar is switched on for the app (App Settings / AB Provider). */
-export function andarBaharEnabled(): boolean {
-  return getSetting('andarbahar_enabled', '1') === '1';
-}
-
 /** Which halves of today's result are already declared (a declared half takes no more bids). */
 function declaredHalves(marketId: number, date: string) {
   const r = db
-    .prepare('SELECT open_panna, close_panna, number FROM results WHERE market_id = ? AND result_date = ?')
-    .get(marketId, date) as { open_panna: string | null; close_panna: string | null; number: string | null } | undefined;
-  return { open: !!(r?.open_panna || r?.number), close: !!r?.close_panna };
+    .prepare('SELECT open_panna, close_panna FROM results WHERE market_id = ? AND result_date = ?')
+    .get(marketId, date) as { open_panna: string | null; close_panna: string | null } | undefined;
+  return { open: !!r?.open_panna, close: !!r?.close_panna };
 }
 
 /**
@@ -234,7 +228,7 @@ export function marketState(m: MarketRow, now = new Date()): MarketState {
   const schedule = getSchedule(m, now.getDay());
   const mins = now.getHours() * 60 + now.getMinutes();
 
-  if (schedule.is_closed || !m.is_active || (m.kind === 'andarbahar' && !andarBaharEnabled())) {
+  if (schedule.is_closed || !m.is_active) {
     return { status: 'holiday', sessions: [], label: 'Holiday', schedule };
   }
 

@@ -7,11 +7,21 @@ import type { AppParamList } from '../navTypes';
 import { useTheme } from '../theme';
 import { Card, EmptyState, Loader, Pill, Row, Txt } from '../ui';
 
-const TONE: Record<FundRequest['status'], 'primary' | 'success' | 'danger'> = {
+type Tone = 'primary' | 'success' | 'danger' | 'muted';
+
+/** Colour for the exact stage the server reports (falls back to the coarse status). */
+const TONE: Record<string, Tone> = {
   pending: 'primary',
   approved: 'success',
+  completed: 'success',
+  failed: 'primary',
   rejected: 'danger',
 };
+
+function stageOf(r: FundRequest) {
+  const stage = r.stage ?? r.status;
+  return { tone: TONE[stage] ?? 'muted', label: (r.statusLabel ?? r.status).toUpperCase() };
+}
 
 export default function FundHistoryScreen() {
   const { colors } = useTheme();
@@ -61,7 +71,7 @@ export default function FundHistoryScreen() {
                 <Txt size={18} weight="800" color={colors.primary}>
                   {formatCoins(item.amount)}
                 </Txt>
-                <Pill text={item.status.toUpperCase()} tone={TONE[item.status]} />
+                <Pill text={stageOf(item).label} tone={stageOf(item).tone} />
               </Row>
               {item.utr ? (
                 <Row style={{ justifyContent: 'space-between', marginTop: 10 }}>
@@ -70,6 +80,26 @@ export default function FundHistoryScreen() {
                   </Txt>
                   <Txt size={13} weight="600">
                     {item.utr}
+                  </Txt>
+                </Row>
+              ) : null}
+              {item.type === 'withdraw' && item.payoutMode ? (
+                <Row style={{ justifyContent: 'space-between', marginTop: 10 }}>
+                  <Txt size={12.5} color={colors.textMuted}>
+                    Paid to
+                  </Txt>
+                  <Txt size={13} weight="600">
+                    {item.payoutMode === 'paytm' ? 'Paytm' : 'Bank account'}
+                  </Txt>
+                </Row>
+              ) : null}
+              {item.payoutRef ? (
+                <Row style={{ justifyContent: 'space-between', marginTop: 10 }}>
+                  <Txt size={12.5} color={colors.textMuted}>
+                    Payment ref
+                  </Txt>
+                  <Txt size={13} weight="600">
+                    {item.payoutRef}
                   </Txt>
                 </Row>
               ) : null}

@@ -103,11 +103,11 @@ breadcrumb cards, DataTables-style lists (Show N entries, search, sort, paginati
 | --- | --- |
 | Dashboard | User, bid, wallet, payout, deposit and withdraw totals; today's registrations with / without balance; registered-user log; today's deposit log |
 | All Users | Search, device info, block / unblock, profile popup (payout details + account summary); `#/users?id=N` opens a profile |
-| Games / Starline / Andar Bahar | **Provider** (add, edit, disable; Andar Bahar module on/off) · **Setting** (weekly timetable per day: bet open/close and result times, closed days, multiple-days edit) · **Rates** (multipliers, decimals allowed) · **Result** (declare → Get Winners List → "Are you sure?" → pay; revert, remove, refund) · Starline / AB **Profit Loss** |
+| Games / Starline | **Provider** (add, edit, disable) · **Setting** (weekly timetable per day: bet open/close and result times, closed days, multiple-days edit) · **Rates** (multipliers, decimals allowed) · **Result** (declare → Get Winners List → "Are you sure?" → pay; revert, remove, refund) · Starline **Profit Loss** |
 | Bookie Corner | OC Cutting Group, Cutting Group (per digit and panna: stake, amount to pay, profit / loss, bid drill-down), Final OC Cutting Group (jodi + sangam) |
 | Wallet | Fund requests (withdraw tabs + deposit approvals, bulk approve), export / download debit report (Kotak, generic bank and Paytm payout files), bulk PG payment (failed payouts), View Wallet (credit / debit, ledgers, transaction history), search account, bank change history, withdraw request on/off per weekday |
 | Approved Debit Requests / Declined | Approved withdrawals by Paytm / bank with mark paid or failed; declined requests |
-| Reports | Jodi All, Sales, Sales Summary, Starline and Andar Bahar sales and bids, Fund Report 1 / 2, UPI Fund, Total (detailed) bids, Credit / Debit, Daily, Bidding, User Analysis, User Reports, User Lists, Customer Balance, All User Bids |
+| Reports | Jodi All, Sales, Sales Summary, Starline sales, Fund Report 1 / 2, UPI Fund, Total (detailed) bids, Credit / Debit, Daily, Bidding, User Analysis, User Reports, User Lists, Customer Balance, All User Bids |
 | Notification · News · Deleted User | Broadcast notifications, login news popup, deleted users with restore and an optional "zero balance for N days" auto-delete |
 | App Settings | How to Play, Notice Board (withdraw screen), Profile Note, Wallet Contact |
 | Masters | Payment gateway list and active pay-in / pay-out gateway (configuration only), staff accounts with per-page permissions |
@@ -188,11 +188,8 @@ Default payouts per coin (editable per market kind under Game Rates):
 | Half Sangam | `openPanna-closeDigit` or `openDigit-closePanna` | 1000× | — |
 | Full Sangam | `openPanna-closePanna` | 10000× | — |
 
-**Andar Bahar** is a two-digit draw (00–99, pays 100×) four times a day; it can be switched off from
-the AB Provider page.
-
 Bidding windows come from each market's weekly timetable (Game Settings): main markets stop open-
-session bids at OBT and close-session bids at CBT; Starline and Andar Bahar slots take bets between
+session bids at OBT and close-session bids at CBT; Starline slots take bets between
 OBT and CBT. Jodi and sangam need both halves of the result, so they only accept bids before OBT.
 A session stops taking bids as soon as its result is declared.
 
@@ -257,8 +254,8 @@ Each sidebar module has its own router in `server/src/routes/admin/`:
 | `/api/admin/dashboard` | `dashboard.ts` | dashboard numbers, today's registrations |
 | `/api/admin/users` | `users.ts` | users, profile, block, deleted users, auto-delete |
 | `/api/admin/content` | `content.ts` | notifications, news, how to play, notice board, profile note, wallet contact |
-| `/api/admin/games` | `games.ts` | providers, weekly timetable, rates, results (declare, winners, settle, revert, refund) for `main`, `starline`, `andarbahar` |
-| `/api/admin/pnl` | `pnl.ts` | Starline / Andar Bahar profit-loss, Bookie Corner, bid history |
+| `/api/admin/games` | `games.ts` | providers, weekly timetable, rates, results (declare, winners, settle, revert, refund) for `main` and `starline` |
+| `/api/admin/pnl` | `pnl.ts` | Starline profit-loss, Bookie Corner, bid history |
 | `/api/admin/wallet` | `wallet.ts` | fund requests and their actions, debit reports, wallets, ledgers, bank history, withdraw on/off |
 | `/api/admin/reports` | `reports1.ts`, `reports2.ts` | every report page |
 | `/api/admin/masters` | `masters.ts` | payment gateways, staff accounts |

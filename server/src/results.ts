@@ -1,7 +1,7 @@
 /* Results and settlement.
  *
  * Flow on the Game Result pages:
- *   1. declareResult()   saves the panna (or Andar Bahar number) for a session.
+ *   1. declareResult()   saves the panna for a session.
  *                        Nothing is paid yet; bids stay pending.
  *   2. winnersFor()      "Get Winners List" — who wins and what they get.
  *   3. settleMarket()    "Are you sure? → Yes" — credits winners, marks losers.
@@ -21,7 +21,6 @@ import {
   isWinner,
   canonPanna,
   pannaDigit,
-  randomJodi,
   randomPanna,
   todayStr,
   toMinutes,
@@ -53,7 +52,6 @@ export interface StoredResult extends ResultRow {
   id: number;
   market_id: number;
   result_date: string;
-  number: string | null;
   open_declared_at: string | null;
   close_declared_at: string | null;
   open_settled_at: string | null;
@@ -77,10 +75,9 @@ export function getResult(marketId: number, date: string) {
 
 /**
  * "123-64-580" for a main market (partial: "123-6*-***"), "123-6" for
- * starline, "06" for andar bahar.
+ * starline.
  */
 export function formatResult(r: ResultRow | undefined, kind: string): string {
-  if (kind === 'andarbahar') return r?.number ?? '**';
   if (!r) return kind === 'starline' ? '***-*' : '***-**-***';
   if (kind === 'starline') {
     return r.open_panna ? `${r.open_panna}-${r.open_digit}` : '***-*';
@@ -98,7 +95,7 @@ export function formatResult(r: ResultRow | undefined, kind: string): string {
  * Which bids a session's result decides.
  *   open   single digit / panna bids of the open session
  *   close  close-session bids plus jodi, red bracket and sangam (need both halves)
- * Starline and Andar Bahar only have the open session.
+ * Starline only has the open session.
  */
 function scopeClause(session: Session | 'all'): { sql: string; params: string[] } {
   if (session === 'all') return { sql: '1 = 1', params: [] };
@@ -122,8 +119,7 @@ function bidsInScope(marketId: number, date: string, session: Session | 'all', s
 /* ---------------------------------------------------------------- declare */
 
 /**
- * Save one half of a market's result (or the andar bahar number).
- * `value` is a 3-digit panna, or a 2-digit number for andar bahar.
+ * Save one half of a market's result. `value` is a 3-digit panna.
  * With `settle: true` winners are paid immediately (auto-declare).
  */
 export function declareResult(
@@ -139,53 +135,36 @@ export function declareResult(
   const now = nowIso();
   const existing = getResult(marketId, date);
 
-  if (market.kind === 'andarbahar') {
-    if (!/^\d{2}$/.test(value)) throw new ResultError('Andar Bahar result must be 2 digits (00-99)');
-    if (existing?.open_settled_at) throw new ResultError('Result already settled — revert it before changing');
-    if (existing) {
-      db.prepare('UPDATE results SET number = ?, open_declared_at = ?, declared_by = ? WHERE id = ?').run(
-        value,
-        now,
-        by,
-        existing.id,
-      );
-    } else {
-      db.prepare(
-        `INSERT INTO results (market_id, result_date, number, open_declared_at, declared_by) VALUES (?, ?, ?, ?, ?)`,
-      ).run(marketId, date, value, now, by);
-    }
+  if (!/^\d{3}$/.test(value)) throw new ResultError('Panna must be 3 digits');
+  // stored in standard matka order (typed 321 → 123), like bid picks
+  const panna = canonPanna(value);
+  const half: Session = market.kind === 'starline' ? 'open' : session;
+  if (half === 'open' && existing?.open_settled_at) {
+    throw new ResultError('Open result already settled — revert it before changing');
+  }
+  if (half === 'open' && existing?.close_settled_at) {
+    throw new ResultError('Close result already settled — revert it before changing the open result');
+  }
+  if (half === 'close' && existing?.close_settled_at) {
+    throw new ResultError('Close result already settled — revert it before changing');
+  }
+  if (half === 'close' && !existing?.open_panna) {
+    throw new ResultError('Declare the open result first');
+  }
+  const digit = pannaDigit(panna);
+  if (!existing) {
+    db.prepare(
+      `INSERT INTO results (market_id, result_date, open_panna, open_digit, open_declared_at, declared_by)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+    ).run(marketId, date, panna, digit, now, by);
+  } else if (half === 'open') {
+    db.prepare(
+      'UPDATE results SET open_panna = ?, open_digit = ?, open_declared_at = ?, declared_by = ? WHERE id = ?',
+    ).run(panna, digit, now, by, existing.id);
   } else {
-    if (!/^\d{3}$/.test(value)) throw new ResultError('Panna must be 3 digits');
-    // stored in standard matka order (typed 321 → 123), like bid picks
-    const panna = canonPanna(value);
-    const half: Session = market.kind === 'starline' ? 'open' : session;
-    if (half === 'open' && existing?.open_settled_at) {
-      throw new ResultError('Open result already settled — revert it before changing');
-    }
-    if (half === 'open' && existing?.close_settled_at) {
-      throw new ResultError('Close result already settled — revert it before changing the open result');
-    }
-    if (half === 'close' && existing?.close_settled_at) {
-      throw new ResultError('Close result already settled — revert it before changing');
-    }
-    if (half === 'close' && !existing?.open_panna) {
-      throw new ResultError('Declare the open result first');
-    }
-    const digit = pannaDigit(panna);
-    if (!existing) {
-      db.prepare(
-        `INSERT INTO results (market_id, result_date, open_panna, open_digit, open_declared_at, declared_by)
-         VALUES (?, ?, ?, ?, ?, ?)`,
-      ).run(marketId, date, panna, digit, now, by);
-    } else if (half === 'open') {
-      db.prepare(
-        'UPDATE results SET open_panna = ?, open_digit = ?, open_declared_at = ?, declared_by = ? WHERE id = ?',
-      ).run(panna, digit, now, by, existing.id);
-    } else {
-      db.prepare(
-        'UPDATE results SET close_panna = ?, close_digit = ?, close_declared_at = ?, declared_by = ? WHERE id = ?',
-      ).run(panna, digit, now, by, existing.id);
-    }
+    db.prepare(
+      'UPDATE results SET close_panna = ?, close_digit = ?, close_declared_at = ?, declared_by = ? WHERE id = ?',
+    ).run(panna, digit, now, by, existing.id);
   }
 
   const sessionForScope: Session = market.kind === 'main' ? session : 'open';
@@ -322,7 +301,7 @@ export function settleMarket(marketId: number, date: string, session: Session | 
     }
 
     const stamp = (half: Session) => {
-      const ready = half === 'open' ? result.open_panna || result.number : result.close_panna;
+      const ready = half === 'open' ? result.open_panna : result.close_panna;
       if (ready) db.prepare(`UPDATE results SET ${half}_settled_at = ? WHERE id = ?`).run(now, result.id);
     };
     if (session === 'all') {
@@ -374,9 +353,7 @@ export function revertResult(marketId: number, date: string, session: Session, b
       reverted += 1;
     }
 
-    if (market.kind === 'andarbahar') {
-      db.prepare('DELETE FROM results WHERE id = ?').run(result.id);
-    } else if (half === 'open') {
+    if (half === 'open') {
       db.prepare('DELETE FROM results WHERE id = ?').run(result.id);
     } else {
       db.prepare(
@@ -486,12 +463,6 @@ export function runAutoDeclare(now = new Date()) {
     if (s.is_closed) continue;
     const r = getResult(m.id, date);
 
-    if (m.kind === 'andarbahar') {
-      if (mins >= toMinutes(s.open_result_time) && !r?.number) {
-        declareResult(m.id, date, 'open', randomJodi(), { settle: true });
-      }
-      continue;
-    }
     if (mins >= toMinutes(s.open_result_time) && !r?.open_panna) {
       declareResult(m.id, date, 'open', randomPanna(), { settle: true });
     }

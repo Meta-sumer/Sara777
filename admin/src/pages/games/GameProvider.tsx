@@ -21,7 +21,7 @@ import {
 } from '../../ui';
 import { errorText, PERM, TEXT, type GameKind, type Provider, type ProvidersResponse } from './shared';
 
-/** Games / Starline / Andar Bahar → Provider: the markets (or draw slots) of one kind. */
+/** Games / Starline → Provider: the markets (or starline slots) of one kind. */
 export function GameProvider({ kind }: { kind: GameKind }) {
   const { nonce } = useRefresh();
   const { can } = useAuth();
@@ -102,9 +102,6 @@ export function GameProvider({ kind }: { kind: GameKind }) {
 
   return (
     <Page title={TEXT[kind].provider}>
-      {kind === 'andarbahar' && state.data && (
-        <AbSwitch enabled={state.data.enabled} canEdit={canEdit} onChanged={state.reload} />
-      )}
       <Card
         title="Providers List"
         actions={
@@ -162,43 +159,6 @@ function Timings({ kind, p }: { kind: GameKind; p: Provider }) {
       )}
       {dayChip}
     </div>
-  );
-}
-
-/** Andar Bahar ON/OFF for the whole app (setting andarbahar_enabled). */
-function AbSwitch({ enabled, canEdit, onChanged }: { enabled: boolean; canEdit: boolean; onChanged: () => Promise<void> }) {
-  const confirm = useConfirm();
-  const toast = useToast();
-  const [busy, run] = useAction();
-  const toggle = () =>
-    run(async () => {
-      const next = !enabled;
-      const ok = await confirm({
-        title: next ? 'Turn Andar Bahar ON?' : 'Turn Andar Bahar OFF?',
-        message: next
-          ? 'Andar Bahar games show in the app again and accept bids.'
-          : 'The app hides Andar Bahar and rejects new Andar Bahar bids. Bids already placed stay pending until you declare their results.',
-        confirmText: next ? 'Yes, turn on' : 'Yes, turn off',
-        danger: !next,
-      });
-      if (!ok) return;
-      await api('/games/andarbahar/module', { method: 'POST', body: { enabled: next } });
-      toast(next ? 'Andar Bahar is ON' : 'Andar Bahar is OFF');
-      await onChanged();
-    });
-  return (
-    <Card>
-      <div className="flex flex-wrap items-center gap-3">
-        <strong className="text-[15px]">Andar Bahar Module</strong>
-        <Chip tone={enabled ? 'ok' : 'bad'}>{enabled ? 'ON — shown in the app' : 'OFF — hidden in the app'}</Chip>
-        <span className="muted grow">Switch the whole Andar Bahar game on or off for players.</span>
-        {canEdit && (
-          <Btn variant={enabled ? 'danger' : 'success'} disabled={busy} onClick={() => void toggle()}>
-            {enabled ? 'Turn OFF' : 'Turn ON'}
-          </Btn>
-        )}
-      </div>
-    </Card>
   );
 }
 

@@ -122,7 +122,7 @@ coreRouter.get('/players', (req, res) => {
 /** Every market (all kinds) for filter dropdowns. */
 coreRouter.get('/markets', (_req, res) => {
   const rows = db
-    .prepare('SELECT id, name, kind, is_active FROM markets ORDER BY kind, sort_order, id')
+    .prepare("SELECT id, name, kind, is_active FROM markets WHERE kind IN ('main', 'starline') ORDER BY kind, sort_order, id")
     .all() as Array<{ id: number; name: string; kind: string; is_active: number }>;
   res.json({ markets: rows.map((m) => ({ id: m.id, name: m.name, kind: m.kind, isActive: !!m.is_active })) });
 });

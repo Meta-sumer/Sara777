@@ -42,18 +42,6 @@ export const PERMISSION_TREE: PermNode[] = [
     ],
   },
   {
-    key: 'andarbahar',
-    label: 'Andar Bahar',
-    children: [
-      { key: 'andarbahar.provider', label: 'AB Provider' },
-      { key: 'andarbahar.setting', label: 'AB Setting' },
-      { key: 'andarbahar.rates', label: 'AB Rates' },
-      { key: 'andarbahar.pnl', label: 'AB Profit Loss' },
-      { key: 'andarbahar.result', label: 'AB Result' },
-      { key: 'andarbahar.revert', label: 'AB Revert' },
-    ],
-  },
-  {
     key: 'bookie',
     label: 'Bookie Corner',
     children: [
@@ -93,8 +81,6 @@ export const PERMISSION_TREE: PermNode[] = [
       { key: 'reports.sales', label: 'Sales Report' },
       { key: 'reports.sales_summary', label: 'Sales Summary' },
       { key: 'reports.starline_sales', label: 'Starline Sales Report' },
-      { key: 'reports.ab_sales', label: 'Andar Bahar Sales Report' },
-      { key: 'reports.ab_bids', label: 'Andar Bahar Total Bids' },
       { key: 'reports.fund', label: 'Fund Report' },
       { key: 'reports.fund2', label: 'Fund Report 2' },
       { key: 'reports.upi_fund', label: 'UPI Fund Report' },

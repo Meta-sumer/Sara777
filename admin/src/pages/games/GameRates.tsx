@@ -33,7 +33,7 @@ interface RatesResponse {
   missing: MissingRate[];
 }
 
-const KIND_NAME: Record<GameKind, string> = { main: 'main market games', starline: 'Starline', andarbahar: 'Andar Bahar' };
+const KIND_NAME: Record<GameKind, string> = { main: 'main market games', starline: 'Starline' };
 
 /** "10 → 95": what a bid of 10 pays at this price. */
 function Payout({ rate }: { rate: number }) {
@@ -41,7 +41,7 @@ function Payout({ rate }: { rate: number }) {
   return <span className="muted text-[12.5px]">{ok ? `10 → ${amt(Math.round(10 * rate * 100) / 100)}` : '--'}</span>;
 }
 
-/** Games / Starline / Andar Bahar → Rates ("Game List"): payout multiplier per game type. */
+/** Games / Starline → Rates ("Game List"): payout multiplier per game type. */
 export function GameRates({ kind }: { kind: GameKind }) {
   const { nonce } = useRefresh();
   const { can } = useAuth();

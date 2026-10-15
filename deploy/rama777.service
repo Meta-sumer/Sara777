@@ -1,0 +1,19 @@
+[Unit]
+Description=Rama777 API and admin panel
+After=network.target
+
+[Service]
+Type=simple
+User=rama777
+Group=rama777
+WorkingDirectory=/opt/rama777/app/server
+ExecStart=/opt/node-v24/bin/node --disable-warning=ExperimentalWarning dist/index.js
+Restart=always
+RestartSec=3
+Environment=NODE_ENV=production
+NoNewPrivileges=true
+ProtectSystem=full
+ReadWritePaths=/opt/rama777
+
+[Install]
+WantedBy=multi-user.target

@@ -262,7 +262,6 @@ export function seedDemo() {
         case 'single_digit':
           return String(between(0, 9));
         case 'jodi_digit':
-        case 'ab_jodi':
           return String(between(0, 99)).padStart(2, '0');
         case 'single_panna':
           return pick(SINGLE_PANNAS);
@@ -295,7 +294,7 @@ export function seedDemo() {
           const kind = market.kind as Kind;
           const s = getSchedule(market, weekday);
           if (s.is_closed) continue;
-          const type: GameTypeKey = kind === 'andarbahar' ? 'ab_jodi' : kind === 'starline' ? pick(starTypes) : pick(mainTypes);
+          const type: GameTypeKey = kind === 'starline' ? pick(starTypes) : pick(mainTypes);
           const rate = activeRate(kind, type);
           if (!rate) continue;
           const both = type === 'jodi_digit' || type === 'half_sangam' || type === 'full_sangam';
@@ -393,7 +392,6 @@ export function seedDemo() {
       const perms = normalizePermissions([
         'dashboard', 'users', 'games.provider', 'games.setting', 'games.rates', 'games.result',
         'starline.provider', 'starline.setting', 'starline.rates', 'starline.pnl', 'starline.result',
-        'andarbahar.provider', 'andarbahar.setting', 'andarbahar.rates', 'andarbahar.pnl', 'andarbahar.result',
         'bookie.oc', 'bookie.cutting', 'bookie.final', 'wallet.fund_request', 'wallet.view', 'wallet.search_account',
         'wallet.bank_history', 'approved_debit.bank', 'approved_debit.paytm', 'declined', 'reports.sales',
         'reports.jodi_all', 'reports.starline_sales', 'reports.total_bids', 'reports.bidding', 'notification', 'news',

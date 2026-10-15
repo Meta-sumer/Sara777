@@ -1,4 +1,4 @@
-/* Starline + Andar Bahar profit/loss, Bookie Corner, bid history popup (mounted at /api/admin/pnl)
+/* Starline profit/loss, Bookie Corner, bid history popup (mounted at /api/admin/pnl)
  *
  * Every table answers "what if this outcome wins?" for one market, date and session:
  *   Amount To Pay(x) = Σ amount × rate of the bids on x (each bid keeps the rate it was placed at)
@@ -28,16 +28,15 @@ import { badRequest, qDate, str } from './util.js';
 
 export const pnlRouter = Router();
 
-const ALL_KEYS = ['starline.pnl', 'andarbahar.pnl', 'bookie.oc', 'bookie.final', 'bookie.cutting'];
+const ALL_KEYS = ['starline.pnl', 'bookie.oc', 'bookie.final', 'bookie.cutting'];
 
 /** Bet groups a P&L table is built from. */
-type Group = 'digit' | 'panna' | 'jodi' | 'ab' | 'half_sangam' | 'full_sangam';
+type Group = 'digit' | 'panna' | 'jodi' | 'half_sangam' | 'full_sangam';
 
 const GROUPS: Record<Group, { label: string; types: GameTypeKey[]; kinds: Kind[]; perSession: boolean }> = {
   digit: { label: 'Single Digit', types: ['single_digit'], kinds: ['main', 'starline'], perSession: true },
   panna: { label: 'Pana', types: PANNA_TYPES, kinds: ['main', 'starline'], perSession: true },
   jodi: { label: 'Jodi', types: ['jodi_digit', 'red_bracket'], kinds: ['main'], perSession: false },
-  ab: { label: 'Jodi', types: ['ab_jodi'], kinds: ['andarbahar'], perSession: false },
   half_sangam: { label: 'Half Sangam', types: ['half_sangam'], kinds: ['main'], perSession: false },
   full_sangam: { label: 'Full Sangam', types: ['full_sangam'], kinds: ['main'], perSession: false },
 };
@@ -57,7 +56,6 @@ function assertPerm(req: Request, ...keys: string[]) {
 /** The permission keys that open a group's numbers for a market kind. */
 function permsFor(kind: Kind, group: Group): string[] {
   if (kind === 'starline') return ['starline.pnl'];
-  if (kind === 'andarbahar') return ['andarbahar.pnl'];
   return group === 'digit' || group === 'panna' ? ['bookie.oc', 'bookie.cutting'] : ['bookie.final'];
 }
 
@@ -186,10 +184,9 @@ function pannaRows(m: MarketRow, date: string, session: Session | null, rates: M
   );
 }
 
-function numberRows(m: MarketRow, date: string, group: 'ab' | 'jodi', rates: Map<string, number>) {
-  return buildRows(aggregate(m, date, group, null), NUMBERS, (p) => p, () =>
-    rateFor(rates, m.kind, group === 'ab' ? 'ab_jodi' : 'jodi_digit'),
-  );
+/** Jodi 00–99 (jodi + red bracket bids) for the Final OC Cutting Group. */
+function jodiRows(m: MarketRow, date: string, rates: Map<string, number>) {
+  return buildRows(aggregate(m, date, 'jodi', null), NUMBERS, (p) => p, () => rateFor(rates, m.kind, 'jodi_digit'));
 }
 
 function marketInfo(m: MarketRow) {
@@ -199,17 +196,16 @@ function marketInfo(m: MarketRow) {
 /** The declared result for context ("--" parts when only half is out), or null before any result. */
 function resultText(m: MarketRow, date: string): string | null {
   const r = getResult(m.id, date);
-  if (!r || (!r.open_panna && !r.close_panna && !r.number)) return null;
+  if (!r || (!r.open_panna && !r.close_panna)) return null;
   return formatResult(r, m.kind);
 }
 
 /* ---------------------------------------------------------------- routes */
 
-/** Providers for the search panels: ?kind=main|starline|andarbahar */
+/** Providers for the search panels: ?kind=main|starline */
 pnlRouter.get('/markets', requirePerm(...ALL_KEYS), (req, res) => {
   const kind = str(req.query.kind) as Kind;
   if (kind === 'starline') assertPerm(req, 'starline.pnl');
-  else if (kind === 'andarbahar') assertPerm(req, 'andarbahar.pnl');
   else if (kind === 'main') assertPerm(req, 'bookie.oc', 'bookie.final', 'bookie.cutting');
   else throw badRequest('Unknown game kind');
   const order = kind === 'main' ? 'sort_order, id' : 'open_time, sort_order, id';
@@ -218,30 +214,16 @@ pnlRouter.get('/markets', requirePerm(...ALL_KEYS), (req, res) => {
 });
 
 /**
- * Starline / Andar Bahar profit and loss for one slot and date.
- *   ?kind=starline|andarbahar&marketId=&date=YYYY-MM-DD
- * Starline: Single Digit (0–9) and Pana (all 220 pannas; `bids` = 0 where nobody bet).
- * Andar Bahar: Jodi 00–99.
+ * Starline profit and loss for one slot and date.
+ *   ?kind=starline&marketId=&date=YYYY-MM-DD
+ * Single Digit (0–9) and Pana (all 220 pannas; `bids` = 0 where nobody bet).
  */
-pnlRouter.get('/game', requirePerm('starline.pnl', 'andarbahar.pnl'), (req, res) => {
-  const kind = str(req.query.kind);
-  if (kind !== 'starline' && kind !== 'andarbahar') throw badRequest('Kind must be starline or andarbahar');
-  assertPerm(req, `${kind}.pnl`);
+pnlRouter.get('/game', requirePerm('starline.pnl'), (req, res) => {
+  const kind = str(req.query.kind) || 'starline';
+  if (kind !== 'starline') throw badRequest('Kind must be starline');
   const m = reqMarket(req, kind);
   const date = reqDate(req);
   const rates = currentRates(kind);
-
-  if (kind === 'andarbahar') {
-    const ab = numberRows(m, date, 'ab', rates);
-    return res.json({
-      market: marketInfo(m),
-      date,
-      result: resultText(m, date),
-      summary: [{ key: 'ab', label: 'Jodi', bids: ab.bids, amount: ab.amount }],
-      total: { bids: ab.bids, amount: ab.amount },
-      tables: { ab: ab.rows },
-    });
-  }
 
   const digit = digitRows(m, date, null, rates);
   const panna = pannaRows(m, date, null, rates);
@@ -293,7 +275,7 @@ pnlRouter.get('/bookie/final', requirePerm('bookie.final'), (req, res) => {
   const m = reqMarket(req, 'main');
   const date = reqDate(req);
   const rates = currentRates('main');
-  const jodi = numberRows(m, date, 'jodi', rates);
+  const jodi = jodiRows(m, date, rates);
 
   const sangam = (['half_sangam', 'full_sangam'] as const).map((group) => {
     const out = buildRows(aggregate(m, date, group, null), [], (p) => p, () => 0);
@@ -333,7 +315,7 @@ pnlRouter.get('/bookie/final', requirePerm('bookie.final'), (req, res) => {
 
 /**
  * Bid History popup: the bids behind one row.
- *   ?marketId=&date=&group=digit|panna|jodi|ab|half_sangam|full_sangam&pick=&session=open|close
+ *   ?marketId=&date=&group=digit|panna|jodi|half_sangam|full_sangam&pick=&session=open|close
  * `session` only applies to single digit and pana bids of a main market.
  */
 pnlRouter.get('/bids', requirePerm(...ALL_KEYS), (req, res) => {
