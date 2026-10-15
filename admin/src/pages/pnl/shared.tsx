@@ -1,13 +1,13 @@
-/* Pieces shared by the Starline / Andar Bahar profit-loss pages and Bookie Corner. */
+/* Pieces shared by the Starline profit-loss page and Bookie Corner. */
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { api } from '../../api';
 import { amt, dateOnly, fmt, SESSION_LABEL } from '../../format';
 import { useLoad } from '../../hooks';
 import { Btn, Card, type Column } from '../../ui';
 
-export type PnlKind = 'main' | 'starline' | 'andarbahar';
+export type PnlKind = 'main' | 'starline';
 export type Session = 'open' | 'close';
-export type BetGroup = 'digit' | 'panna' | 'jodi' | 'ab' | 'half_sangam' | 'full_sangam';
+export type BetGroup = 'digit' | 'panna' | 'jodi' | 'half_sangam' | 'full_sangam';
 
 export interface PnlMarket {
   id: number;
@@ -46,7 +46,7 @@ export interface PnlReport {
   result: string | null;
   summary: SummaryRow[];
   total: { bids: number; amount: number };
-  tables: Partial<Record<'digit' | 'panna' | 'jodi' | 'ab', PnlRow[]>>;
+  tables: Partial<Record<'digit' | 'panna' | 'jodi', PnlRow[]>>;
 }
 
 /** What the Bid History popup should list. */
@@ -70,7 +70,7 @@ export function usePnlMarkets(kind: PnlKind) {
   return useLoad(load);
 }
 
-/** Dropdown text: the slot time for Starline / Andar Bahar (as in the reference), the name for main markets. */
+/** Dropdown text: the slot time for Starline (as in the reference), the name for main markets. */
 export function marketOptions(markets: PnlMarket[]) {
   const timeCount = new Map<string, number>();
   for (const m of markets) timeCount.set(m.timeLabel, (timeCount.get(m.timeLabel) ?? 0) + 1);
@@ -82,7 +82,7 @@ export function marketOptions(markets: PnlMarket[]) {
 }
 
 /**
- * Provider picked when the page opens: for Starline / Andar Bahar the next slot
+ * Provider picked when the page opens: for Starline the next slot
  * still to be declared today (the last slot once all are past); for main markets the first active one.
  */
 export function defaultMarket(markets: PnlMarket[]): string {
@@ -203,20 +203,12 @@ export function reportCaption(report: PnlReport) {
 
 /* ---------------------------------------------------------------- columns */
 
-/** Bid Count cell: "View Bids Info (N)" as a dark text link, or a dark button (Andar Bahar). */
-export function BidsInfo({ count, button, onClick }: { count: number; button?: boolean; onClick: () => void }) {
+/** Bid Count cell: "View Bids Info (N)" as a dark text link. */
+export function BidsInfo({ count, onClick }: { count: number; onClick: () => void }) {
   const text = `View Bids Info (${fmt(count)})`;
-  if (count === 0) {
-    return button ? (
-      <Btn variant="dark" sm disabled>
-        {text}
-      </Btn>
-    ) : (
-      <span className="muted">{text}</span>
-    );
-  }
+  if (count === 0) return <span className="muted">{text}</span>;
   return (
-    <Btn variant={button ? 'dark' : 'link'} sm={button} onClick={onClick}>
+    <Btn variant="link" onClick={onClick}>
       {text}
     </Btn>
   );
@@ -227,16 +219,13 @@ export function pnlColumns({
   session,
   bidCount,
   amountLabel = 'Total Bids Amount',
-  formula = false,
 }: {
   digitsLabel?: string;
   /** show a Session column (Bookie Corner) */
   session?: Session;
   /** Bid Count column: omitted for OC Cutting Group */
-  bidCount?: { button?: boolean; onView: (row: PnlRow) => void };
+  bidCount?: { onView: (row: PnlRow) => void };
   amountLabel?: string;
-  /** Andar Bahar: Amount To Pay as "1750*100" plus "Amount To Pay Calculated" */
-  formula?: boolean;
 }): Column<PnlRow>[] {
   const cols: Column<PnlRow>[] = [{ key: 'label', label: digitsLabel, align: 'center' }];
   if (session) cols.push({ key: 'session', label: 'Session', align: 'center', value: () => SESSION_LABEL[session] });
@@ -245,24 +234,11 @@ export function pnlColumns({
       key: 'bids',
       label: 'Bid Count',
       align: 'center',
-      render: (r) => <BidsInfo count={r.bids} button={bidCount.button} onClick={() => bidCount.onView(r)} />,
+      render: (r) => <BidsInfo count={r.bids} onClick={() => bidCount.onView(r)} />,
     });
   }
   cols.push({ key: 'amount', label: amountLabel, align: 'center', render: (r) => amt(r.amount) });
-  if (formula) {
-    cols.push(
-      { key: 'toPay', label: 'Amount To Pay', align: 'center', render: (r) => r.formula },
-      {
-        key: 'calc',
-        label: 'Amount To Pay Calculated',
-        align: 'center',
-        value: (r) => r.toPay,
-        render: (r) => `${r.formula}=${r.toPay}`,
-      },
-    );
-  } else {
-    cols.push({ key: 'toPay', label: 'Amount To Pay', align: 'center', render: (r) => amt(r.toPay) });
-  }
+  cols.push({ key: 'toPay', label: 'Amount To Pay', align: 'center', render: (r) => amt(r.toPay) });
   cols.push(
     { key: 'profit', label: 'Profit', align: 'center', render: (r) => <span className="profit">{amt(r.profit)}</span> },
     { key: 'loss', label: 'Loss', align: 'center', render: (r) => <span className="loss">{amt(r.loss)}</span> },

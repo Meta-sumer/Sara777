@@ -1,5 +1,5 @@
-/* Starline and Andar Bahar Profit/Loss Calculations: for one slot and date, what
-   the house keeps or pays out for every possible result. */
+/* Starline Profit/Loss Calculations: for one slot and date, what the house
+   keeps or pays out for every possible result. */
 import { useCallback, useMemo, useState } from 'react';
 import { api } from '../../api';
 import { today } from '../../format';
@@ -20,19 +20,7 @@ import {
   usePnlMarkets,
 } from './shared';
 
-type GameKind = 'starline' | 'andarbahar';
-
-const TEXT: Record<GameKind, { title: string; crumb: string }> = {
-  starline: { title: 'Starline Profit/Loss Calculations', crumb: 'Starline Profit/Loss' },
-  andarbahar: { title: 'Andar Bahar Profit/Loss Calculations', crumb: 'Andar Bahar Profit/Loss' },
-};
-
-export function GamePnl({ kind }: { kind: 'starline' | 'andarbahar' }) {
-  // keyed so moving between the Starline and Andar Bahar pages starts with fresh filters
-  return <GamePnlView key={kind} kind={kind} />;
-}
-
-function GamePnlView({ kind }: { kind: GameKind }) {
+export function GamePnl({ kind }: { kind: 'starline' }) {
   const { nonce } = useRefresh();
   const markets = usePnlMarkets(kind);
   const { form, query, set, submit, reset } = usePnlForm(markets.data?.markets, (marketId) => ({
@@ -71,10 +59,6 @@ function GamePnlView({ kind }: { kind: GameKind }) {
 
   const digitCols = useMemo(() => pnlColumns({ bidCount: { onView: view('digit', 'Single Digit') } }), [view]);
   const pannaCols = useMemo(() => pnlColumns({ bidCount: { onView: view('panna', 'Pana') } }), [view]);
-  const abCols = useMemo(
-    () => pnlColumns({ bidCount: { button: true, onView: view('ab', 'Jodi') }, formula: true }),
-    [view],
-  );
   const pannaRows = useMemo(
     () => (data?.tables.panna ?? []).filter((r) => allPannas || r.bids > 0),
     [data, allPannas],
@@ -83,8 +67,8 @@ function GamePnlView({ kind }: { kind: GameKind }) {
   const options = marketOptions(markets.data?.markets ?? []);
 
   return (
-    <Page title={TEXT[kind].crumb}>
-      <TitleCard>{TEXT[kind].title}</TitleCard>
+    <Page title="Starline Profit/Loss">
+      <TitleCard>Starline Profit/Loss Calculations</TitleCard>
 
       <div className="grid-2" style={{ marginBottom: 20 }}>
         <FilterCard onSubmit={submit} onCancel={reset} busy={report.loading && !!query}>
@@ -107,14 +91,14 @@ function GamePnlView({ kind }: { kind: GameKind }) {
             </select>
           </Field>
         </FilterCard>
-        <SummaryBox report={data} order={kind === 'starline' ? ['panna', 'digit'] : ['ab']} />
+        <SummaryBox report={data} order={['panna', 'digit']} />
       </div>
 
       {markets.error && <ErrorCard message={markets.error} />}
       {report.error && <ErrorCard message={report.error} />}
       {report.loading && !data && query && <Loading />}
 
-      {data && kind === 'starline' && (
+      {data && (
         <>
           <Card title="Single Digit">
             <DataTable
@@ -137,18 +121,6 @@ function GamePnlView({ kind }: { kind: GameKind }) {
             />
           </Card>
         </>
-      )}
-
-      {data && kind === 'andarbahar' && (
-        <Card title="Jodi">
-          <DataTable
-            columns={abCols}
-            rows={data.tables.ab ?? []}
-            rowKey={(r) => r.pick}
-            pageSize={50}
-            initialSort={{ key: 'label', dir: 'asc' }}
-          />
-        </Card>
       )}
 
       {bids && <BidHistoryModal query={bids} onClose={() => setBids(null)} />}

@@ -74,6 +74,7 @@ export function addDays(date: string, days: number): string {
 export const KIND_LABEL: Record<string, string> = {
   main: 'Main Market',
   starline: 'Starline',
+  // the game was removed; kept so older Andar Bahar bids in history still read well
   andarbahar: 'Andar Bahar',
 };
 

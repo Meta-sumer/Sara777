@@ -4,7 +4,6 @@ import { useAppNavigation } from '../navTypes';
 import React, { useEffect, useState } from 'react';
 import { FlatList, Pressable, View } from 'react-native';
 import { type Market, type MarketKind, api } from '../api';
-import { useAuth } from '../auth';
 import { Header } from '../components/Header';
 import { radius, useTheme } from '../theme';
 import { EmptyState, Loader, Row, Txt } from '../ui';
@@ -14,8 +13,7 @@ export default function ChartsScreen() {
   const navigation = useAppNavigation();
   const [markets, setMarkets] = useState<Market[] | null>(null);
   const [kind, setKind] = useState<MarketKind>('main');
-  const { settings } = useAuth();
-  const kinds: MarketKind[] = settings?.andarBaharEnabled === false ? ['main', 'starline'] : ['main', 'starline', 'andarbahar'];
+  const kinds: MarketKind[] = ['main', 'starline'];
 
   useEffect(() => {
     setMarkets(null);
@@ -47,7 +45,7 @@ export default function ChartsScreen() {
               }}
             >
               <Txt size={14} weight="700" color={active ? '#FFFFFF' : colors.textMuted}>
-                {k === 'main' ? 'Market' : k === 'starline' ? 'Starline' : 'Andar Bahar'}
+                {k === 'main' ? 'Market Charts' : 'Starline Charts'}
               </Txt>
             </Pressable>
           );

@@ -3,7 +3,7 @@ import { db } from '../db.js';
 import { formatTime12, parseKind, todayStr } from '../game.js';
 import { allRates } from '../rates.js';
 import { formatResult, getResult } from '../results.js';
-import { type MarketRow, andarBaharEnabled, marketState, resultTimes } from '../schedule.js';
+import { type MarketRow, marketState, resultTimes } from '../schedule.js';
 
 export const marketsRouter = Router();
 
@@ -27,7 +27,7 @@ function serialize(m: MarketRow, date: string) {
     closeTimeLabel: times.closeLabel,
     // betting cut-offs from today's timetable
     //   main: open-session bids close / close-session bids close
-    //   starline / andar bahar: bids open / bids close
+    //   starline: bids open / bids close
     openBidsLabel: formatTime12(state.schedule.open_bet_time),
     closeBidsLabel: formatTime12(state.schedule.close_bet_time),
     days: runningDays,
@@ -42,25 +42,24 @@ function serialize(m: MarketRow, date: string) {
           openDigit: result.open_digit,
           closePanna: result.close_panna,
           closeDigit: result.close_digit,
-          number: result.number,
         }
       : null,
   };
 }
 
 function marketsOf(kind: string) {
-  if (kind === 'andarbahar' && !andarBaharEnabled()) return [];
   return db
     .prepare('SELECT * FROM markets WHERE kind = ? AND is_active = 1 ORDER BY sort_order, id')
     .all(kind) as unknown as MarketRow[];
 }
 
 marketsRouter.get('/', (req, res) => {
-  const kind = parseKind(req.query.kind);
   const date = todayStr();
+  // Andar Bahar was removed; app builds that still have its screen get an empty, switched-off list
+  if (req.query.kind === 'andarbahar') return res.json({ date, enabled: false, markets: [] });
+  const kind = parseKind(req.query.kind);
   res.json({
     date,
-    enabled: kind !== 'andarbahar' || andarBaharEnabled(),
     markets: marketsOf(kind).map((m) => serialize(m, date)),
   });
 });
@@ -95,7 +94,6 @@ marketsRouter.get('/:id/results', (req, res) => {
       open_digit: string | null;
       close_panna: string | null;
       close_digit: string | null;
-      number: string | null;
     }>;
 
   res.json({
@@ -106,8 +104,7 @@ marketsRouter.get('/:id/results', (req, res) => {
       openDigit: r.open_digit,
       closePanna: r.close_panna,
       closeDigit: r.close_digit,
-      number: r.number,
-      jodi: r.open_digit && r.close_digit ? `${r.open_digit}${r.close_digit}` : r.number,
+      jodi: r.open_digit && r.close_digit ? `${r.open_digit}${r.close_digit}` : null,
       display: formatResult(r, m.kind),
     })),
   });

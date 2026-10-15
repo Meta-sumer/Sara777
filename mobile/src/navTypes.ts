@@ -7,7 +7,6 @@ export type AppParamList = {
   // stack
   Drawer: undefined;
   Starline: undefined;
-  AndarBahar: undefined;
   HowToPlay: undefined;
   GamePlay: { marketId: number; marketName: string; kind: MarketKind };
   PlaceBid: {

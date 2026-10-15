@@ -79,7 +79,7 @@ const when = (iso: string | null, resultDate: string) =>
   iso && dateOnly(iso) === dateOnly(resultDate) ? timeOnly(iso) : dt(iso);
 
 /**
- * Games / Starline / Andar Bahar → Result.
+ * Games / Starline → Result.
  * Declare (nothing is paid) → Get Winners List → Pay Winners & Settle → (Revert if wrong).
  */
 export function GameResult({ kind }: { kind: GameKind }) {
@@ -361,7 +361,6 @@ function DeclareCard({
 }) {
   const toast = useToast();
   const main = kind === 'main';
-  const ab = kind === 'andarbahar';
   const [marketId, setMarketId] = useState<number>(providers[0]?.id ?? 0);
   const [session, setSession] = useState<Session>('open');
   const [date, setDate] = useState(today());
@@ -395,7 +394,7 @@ function DeclareCard({
     };
   }, [kind, marketId, date, formNonce, localNonce]);
 
-  const digit = ab ? '' : pannaDigit(value);
+  const digit = pannaDigit(value);
 
   const reset = () => {
     setValue('');
@@ -407,9 +406,7 @@ function DeclareCard({
   const submit = async () => {
     setError('');
     if (!market) return setError('Choose a provider');
-    if (ab ? !/^\d{2}$/.test(value) : !/^\d{3}$/.test(value)) {
-      return setError(ab ? 'Enter the 2 digit winning number (00-99)' : 'Enter the 3 digit winning panna');
-    }
+    if (!/^\d{3}$/.test(value)) return setError('Enter the 3 digit winning panna');
     setBusy(true);
     try {
       const out = await api<DeclareResponse>('/games/results', {
@@ -451,11 +448,7 @@ function DeclareCard({
       <p className="card-sub">Enter Your Game Result</p>
       <div
         className={`grid grid-cols-1 items-end gap-4 sm:grid-cols-2 ${
-          main
-            ? 'xl:grid-cols-[1.5fr_1fr_1.3fr_1.1fr_0.8fr]'
-            : ab
-              ? 'xl:grid-cols-[1.6fr_1.3fr_1.1fr]'
-              : 'xl:grid-cols-[1.6fr_1.3fr_1.1fr_0.8fr]'
+          main ? 'xl:grid-cols-[1.5fr_1fr_1.3fr_1.1fr_0.8fr]' : 'xl:grid-cols-[1.6fr_1.3fr_1.1fr_0.8fr]'
         }`}
       >
       <Field label="Provider Name">
@@ -478,31 +471,29 @@ function DeclareCard({
       <Field label="Result Date">
         <input type="date" value={date} max={today()} onChange={(e) => setDate(e.target.value)} />
       </Field>
-      <Field label={ab ? 'Winning Digit' : 'Winning Panna'}>
+      <Field label="Winning Panna">
         <input
           value={value}
           inputMode="numeric"
-          maxLength={ab ? 2 : 3}
-          placeholder={ab ? '00-99' : 'e.g. 123'}
-          onChange={(e) => setValue(e.target.value.replace(/\D/g, '').slice(0, ab ? 2 : 3))}
+          maxLength={3}
+          placeholder="e.g. 123"
+          onChange={(e) => setValue(e.target.value.replace(/\D/g, '').slice(0, 3))}
         />
       </Field>
-      {!ab && (
-        <Field label="Winning Digit">
-          <input
-            readOnly
-            tabIndex={-1}
-            value={digit}
-            placeholder="Auto"
-            title="Last digit of the sum of the panna's three digits"
-            className="bg-[#f4f5f7] font-bold"
-          />
-        </Field>
-      )}
+      <Field label="Winning Digit">
+        <input
+          readOnly
+          tabIndex={-1}
+          value={digit}
+          placeholder="Auto"
+          title="Last digit of the sum of the panna's three digits"
+          className="bg-[#f4f5f7] font-bold"
+        />
+      </Field>
       </div>
 
       <div className="mt-3 text-[13px]">
-        {!ab && digit && (
+        {digit && (
           <div className="muted">
             {value.split('').join(' + ')} = {value.split('').reduce((s, d) => s + Number(d), 0)} → digit{' '}
             <strong className="text-[#323a46]">{digit}</strong> · {pannaKind(value)}

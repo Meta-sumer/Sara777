@@ -2,9 +2,7 @@
  *   GET /jodi-all          main-market jodi bets: totals and one row per market
  *   GET /sales             main-market bidding vs winning for a range
  *   GET /starline-sales    the same for Starline
- *   GET /ab-sales          the same for Andar Bahar
  *   GET /sales-summary     the same, one row per day
- *   GET /ab-bids           Andar Bahar bids of one day (paged)
  *   GET /fund              wallet money movements (paged) with totals
  *   GET /fund2             deposit / withdraw requests with totals per status
  *   GET /upi-fund          UPI deposit requests with UTR and payment proof
@@ -187,13 +185,12 @@ function salesRoute(kind: Kind) {
 
 reports1Router.get('/sales', requirePerm('reports.sales'), salesRoute('main'));
 reports1Router.get('/starline-sales', requirePerm('reports.starline_sales'), salesRoute('starline'));
-reports1Router.get('/ab-sales', requirePerm('reports.ab_sales'), salesRoute('andarbahar'));
 
-/** Day-wise sales. ?kind=main|starline|andarbahar|all (default main). */
+/** Day-wise sales. ?kind=main|starline|all (default main). */
 reports1Router.get('/sales-summary', requirePerm('reports.sales_summary'), (req, res) => {
   const k = str(req.query.kind) || 'main';
-  if (k !== 'all' && !['main', 'starline', 'andarbahar'].includes(k)) throw badRequest('Invalid market type');
-  const kinds: Kind[] = k === 'all' ? ['main', 'starline', 'andarbahar'] : [k as Kind];
+  if (k !== 'all' && !['main', 'starline'].includes(k)) throw badRequest('Invalid market type');
+  const kinds: Kind[] = k === 'all' ? ['main', 'starline'] : [k as Kind];
   const { where, from, to, marketId, userId } = salesWhere(req, kinds);
 
   const total = get<SalesRaw>(`SELECT ${SALES_COLS} FROM bids b WHERE ${where.sql}`, ...where.params);
@@ -209,88 +206,6 @@ reports1Router.get('/sales-summary', requirePerm('reports.sales_summary'), (req,
     userId,
     total: salesOut(total),
     days: days.map((d) => ({ date: d.bid_date, ...salesOut(d) })),
-  });
-});
-
-/* ---------------------------------------------------- andar bahar bids */
-
-reports1Router.get('/ab-bids', requirePerm('reports.ab_bids'), (req, res) => {
-  const date = qDate(req);
-  const marketId = qMarket(req, ['andarbahar']);
-  const userId = qUser(req);
-  const status = str(req.query.status);
-  if (status && status !== 'all' && !['pending', 'won', 'lost', 'refunded'].includes(status)) {
-    throw badRequest('Invalid status');
-  }
-  const search = str(req.query.search);
-  const { page, perPage, offset } = paging(req);
-
-  const where = new Where().add(`b.kind = 'andarbahar'`).add('b.bid_date = ?', date);
-  if (marketId) where.add('b.market_id = ?', marketId);
-  if (userId) where.add('b.user_id = ?', userId);
-  if (status && status !== 'all') where.add('b.status = ?', status);
-  if (search) {
-    const q = like(search);
-    where.add(
-      `(u.username LIKE ? ESCAPE '\\' OR u.name LIKE ? ESCAPE '\\' OR u.mobile LIKE ? ESCAPE '\\' OR b.pick = ? OR COALESCE(m.name, b.market_name) LIKE ? ESCAPE '\\')`,
-      q,
-      q,
-      q,
-      search,
-      q,
-    );
-  }
-  const from = 'FROM bids b JOIN users u ON u.id = b.user_id LEFT JOIN markets m ON m.id = b.market_id';
-
-  const t = get<{ c: number; refunded: number; players: number; amount: number; win: number; pending: number }>(
-    `SELECT COUNT(*) AS c,
-            COALESCE(SUM(CASE WHEN b.status = 'refunded' THEN 1 ELSE 0 END), 0) AS refunded,
-            COUNT(DISTINCT b.user_id) AS players,
-            COALESCE(SUM(CASE WHEN b.status <> 'refunded' THEN b.amount ELSE 0 END), 0) AS amount,
-            COALESCE(SUM(CASE WHEN b.status = 'won' THEN b.win_amount ELSE 0 END), 0) AS win,
-            COALESCE(SUM(CASE WHEN b.status = 'pending' THEN 1 ELSE 0 END), 0) AS pending
-     ${from} WHERE ${where.sql}`,
-    ...where.params,
-  );
-  const rows = all<Record<string, unknown>>(
-    `SELECT b.id, b.user_id, u.username, u.name, b.pick, b.amount, b.rate, b.status, b.win_amount,
-            b.market_id, COALESCE(m.name, b.market_name) AS market_name, b.created_at
-     ${from} WHERE ${where.sql}
-     ORDER BY b.created_at, b.id LIMIT ? OFFSET ?`,
-    ...where.params,
-    perPage,
-    offset,
-  );
-  const amount = money(Number(t?.amount ?? 0));
-  const win = money(Number(t?.win ?? 0));
-  res.json({
-    date,
-    page,
-    perPage,
-    total: Number(t?.c ?? 0),
-    totals: {
-      bids: Number(t?.c ?? 0),
-      players: Number(t?.players ?? 0),
-      refunded: Number(t?.refunded ?? 0),
-      pending: Number(t?.pending ?? 0),
-      amount,
-      win,
-      profit: money(amount - win),
-    },
-    bids: rows.map((r) => ({
-      id: r.id,
-      userId: r.user_id,
-      username: r.username,
-      name: r.name,
-      number: r.pick,
-      amount: Number(r.amount),
-      rate: Number(r.rate),
-      status: r.status,
-      winAmount: Number(r.win_amount),
-      marketId: r.market_id,
-      marketName: r.market_name,
-      createdAt: r.created_at,
-    })),
   });
 });
 

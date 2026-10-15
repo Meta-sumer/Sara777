@@ -70,8 +70,8 @@ export interface User {
   createdAt: string;
 }
 
-/** Market kinds: main bazaar markets, King Starline slots, and Andar Bahar draws. */
-export type MarketKind = 'main' | 'starline' | 'andarbahar';
+/** Market kinds: main bazaar markets and King Starline slots. */
+export type MarketKind = 'main' | 'starline';
 
 export interface Market {
   id: number;
@@ -81,9 +81,9 @@ export interface Market {
   closeTime: string;
   openTimeLabel: string;
   closeTimeLabel: string;
-  /** main: open-session bids close · starline / andar bahar: bids open */
+  /** main: open-session bids close · starline: bids open */
   openBidsLabel?: string;
-  /** main: close-session bids close · starline / andar bahar: bids close */
+  /** main: close-session bids close · starline: bids close */
   closeBidsLabel?: string;
   status: 'open_running' | 'close_running' | 'closed_today' | 'holiday';
   statusLabel: string;
@@ -188,8 +188,6 @@ export interface WithdrawStatus {
 
 export interface AppSettings {
   appName: string;
-  /** Andar Bahar switched on from the admin panel */
-  andarBaharEnabled?: boolean;
   whatsappNumber: string;
   supportName: string;
   marquee: string;

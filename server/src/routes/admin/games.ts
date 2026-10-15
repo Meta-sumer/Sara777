@@ -1,15 +1,14 @@
-/* Providers, weekly settings, rates and results for main / starline / andar bahar
+/* Providers, weekly settings, rates and results for main markets and starline
  * (mounted at /api/admin/games).
  *
  * Every route checks the permission of the market kind it touches:
- *   main → games.*   starline → starline.*   andarbahar → andarbahar.*
+ *   main → games.*   starline → starline.*
  * with .provider .setting .rates .result .revert (and games.refund).
  *
  *   GET    /:kind/providers                list (+ today's result and timings)
  *   POST   /:kind/providers                add a provider, with a 7-day timetable
  *   PATCH  /providers/:id                  edit name / default times / status
  *   DELETE /providers/:id                  delete (or disable when it has bids)
- *   POST   /andarbahar/module              Andar Bahar ON/OFF for the app
  *   GET    /:kind/schedule                 weekly matrix
  *   PUT    /providers/:id/schedule         set times for one or more weekdays
  *   GET|POST /:kind/rates, PATCH|DELETE /:kind/rates/:key
@@ -21,7 +20,7 @@
  *   DELETE /results                        "Remove History"
  */
 import { Router, type NextFunction, type Request, type Response } from 'express';
-import { all, db, scalar, setSetting, tx } from '../../db.js';
+import { all, db, scalar, tx } from '../../db.js';
 import { adminName, requirePerm } from '../../auth.js';
 import { KINDS, type Kind, type Session, gameType, toMinutes, todayStr } from '../../game.js';
 import { allRates, missingRates, removeRate, setRate } from '../../rates.js';
@@ -44,7 +43,6 @@ import {
   type MarketRow,
   type ScheduleRow,
   type ScheduleTimes,
-  andarBaharEnabled,
   checkTimes,
   defaultTimes,
   ensureSchedule,
@@ -58,8 +56,8 @@ import { badRequest, log, qDate, str } from './util.js';
 
 export const gamesRouter = Router();
 
-const PREFIX: Record<Kind, string> = { main: 'games', starline: 'starline', andarbahar: 'andarbahar' };
-const KIND_NAME: Record<Kind, string> = { main: 'Main market', starline: 'Starline', andarbahar: 'Andar Bahar' };
+const PREFIX: Record<Kind, string> = { main: 'games', starline: 'starline' };
+const KIND_NAME: Record<Kind, string> = { main: 'Main market', starline: 'Starline' };
 
 type Action = 'provider' | 'setting' | 'rates' | 'result' | 'revert' | 'refund';
 
@@ -78,7 +76,8 @@ function marketPerm(...actions: Action[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     const id = Number(req.params.id ?? req.body?.marketId ?? req.query.marketId);
     const market = Number.isInteger(id) && id > 0 ? getMarket(id) : undefined;
-    if (!market) return res.status(404).json({ message: 'Provider not found' });
+    // markets of a removed game kind (Andar Bahar) are not managed here any more
+    if (!market || !KINDS.includes(market.kind)) return res.status(404).json({ message: 'Provider not found' });
     res.locals.market = market;
     return requirePerm(...actions.map((a) => `${PREFIX[market.kind]}.${a}`))(req, res, next);
   };
@@ -146,7 +145,7 @@ function providersOf(kind: Kind) {
   return all<MarketRow>('SELECT * FROM markets WHERE kind = ? ORDER BY sort_order, id', kind);
 }
 
-/** Starline / andar bahar slots are listed by result time. */
+/** Starline slots are listed by result time. */
 function resortSlots(kind: Kind) {
   if (kind === 'main') return;
   const rows = all<{ id: number }>('SELECT id FROM markets WHERE kind = ? ORDER BY open_time, id', kind);
@@ -202,7 +201,6 @@ gamesRouter.get('/:kind/providers', kindPerm('provider', 'setting', 'result'), (
   res.json({
     kind,
     date,
-    enabled: kind !== 'andarbahar' || andarBaharEnabled(),
     providers: providersOf(kind).map((m) => providerRow(m, date, now)),
   });
 });
@@ -279,15 +277,6 @@ gamesRouter.delete('/providers/:id', marketPerm('provider'), (req, res) => {
   });
   log(req, `${PREFIX[market.kind]}.provider.delete`, { id: market.id, name: market.name });
   res.json({ ok: true, deleted: true, message: `${market.name} deleted` });
-});
-
-/** Andar Bahar ON/OFF: when off the app hides AB markets and rejects AB bids. */
-gamesRouter.post('/andarbahar/module', requirePerm('andarbahar.provider'), (req, res) => {
-  const v = req.body?.enabled;
-  if (typeof v !== 'boolean') throw badRequest('enabled must be true or false');
-  setSetting('andarbahar_enabled', v ? '1' : '0');
-  log(req, 'andarbahar.module', { enabled: v });
-  res.json({ ok: true, enabled: andarBaharEnabled() });
 });
 
 /* --------------------------------------------------------------- schedule */
@@ -431,8 +420,8 @@ gamesRouter.delete('/:kind/rates/:key', kindPerm('rates'), (req, res) => {
 /** One declared session of a result, as a row of the history table. */
 function resultLine(m: { id: number; name: string; kind: Kind }, r: StoredResult, session: Session) {
   const isOpen = session === 'open';
-  const value = m.kind === 'andarbahar' ? r.number : isOpen ? r.open_panna : r.close_panna;
-  const digit = m.kind === 'andarbahar' ? null : isOpen ? r.open_digit : r.close_digit;
+  const value = isOpen ? r.open_panna : r.close_panna;
+  const digit = isOpen ? r.open_digit : r.close_digit;
   const settledAt = isOpen ? r.open_settled_at : r.close_settled_at;
   const counts = bidCounts(m.id, r.result_date, session);
   const totals = winnersFor(m.id, r.result_date, session).totals;
@@ -444,7 +433,7 @@ function resultLine(m: { id: number; name: string; kind: Kind }, r: StoredResult
     resultDate: r.result_date,
     value,
     digit,
-    display: m.kind === 'andarbahar' ? value : `${value}-${digit}`,
+    display: `${value}-${digit}`,
     fullResult: formatResult(r, m.kind),
     declaredAt: isOpen ? r.open_declared_at : r.close_declared_at,
     declaredBy: r.declared_by,
@@ -473,10 +462,6 @@ gamesRouter.get('/:kind/results', kindPerm('result'), (req, res) => {
   const lines: Array<ReturnType<typeof resultLine>> = [];
   for (const r of rows) {
     const m = { id: r.market_id, name: r.market_name, kind };
-    if (kind === 'andarbahar') {
-      if (r.number) lines.push(resultLine(m, r, 'open'));
-      continue;
-    }
     if (r.open_panna) lines.push(resultLine(m, r, 'open'));
     if (kind === 'main' && r.close_panna) lines.push(resultLine(m, r, 'close'));
   }
@@ -489,11 +474,7 @@ gamesRouter.post('/results', marketPerm('result'), (req, res) => {
   const date = bodyDate(req.body?.date);
   const session = sessionOf(market, req.body?.session);
   const value = str(req.body?.value);
-  if (market.kind === 'andarbahar') {
-    if (!/^\d{2}$/.test(value)) throw badRequest('Winning number must be 2 digits (00-99)');
-  } else if (!/^\d{3}$/.test(value)) {
-    throw badRequest('Winning panna must be 3 digits');
-  }
+  if (!/^\d{3}$/.test(value)) throw badRequest('Winning panna must be 3 digits');
   const out = declareResult(market.id, date, session, value, { by: adminName(req) });
   log(req, `${PREFIX[market.kind]}.result.declare`, { marketId: market.id, name: market.name, date, session, value });
   res.status(201).json({ ok: true, marketName: market.name, session, date, ...out });
@@ -510,7 +491,7 @@ gamesRouter.get('/results/winners', marketPerm('result'), (req, res) => {
     market: { id: market.id, name: market.name, kind: market.kind },
     date,
     session: half,
-    declared: !!(result && (market.kind === 'andarbahar' ? result.number : half === 'open' ? result.open_panna : result.close_panna)),
+    declared: !!(result && (half === 'open' ? result.open_panna : result.close_panna)),
     result: formatResult(result, market.kind),
     settledAt: (half === 'open' ? result?.open_settled_at : result?.close_settled_at) ?? null,
     bids: bidCounts(market.id, date, half),
@@ -528,7 +509,7 @@ gamesRouter.get('/results/pending', marketPerm('result'), (req, res) => {
     date,
     result: formatResult(r, market.kind),
     declared: {
-      open: !!(r?.open_panna || r?.number),
+      open: !!r?.open_panna,
       close: !!r?.close_panna,
     },
     open: bidCounts(market.id, date, 'open'),
@@ -542,7 +523,7 @@ gamesRouter.post('/results/settle', marketPerm('result'), (req, res) => {
   const date = bodyDate(req.body?.date);
   const session = sessionOf(market, req.body?.session);
   const r = getResult(market.id, date);
-  const declared = market.kind === 'andarbahar' ? r?.number : session === 'open' ? r?.open_panna : r?.close_panna;
+  const declared = session === 'open' ? r?.open_panna : r?.close_panna;
   if (!declared) throw badRequest('Declare the result before settling it');
   const out = settleMarket(market.id, date, session, adminName(req));
   log(req, `${PREFIX[market.kind]}.result.settle`, { marketId: market.id, name: market.name, date, session, ...out });

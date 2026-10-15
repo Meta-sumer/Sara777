@@ -39,7 +39,7 @@ function fieldsOf(kind: GameKind): Array<{ key: keyof DayTimes; short: string; l
       ];
 }
 
-/** Games / Starline / Andar Bahar → Setting: the weekly timetable matrix (provider × weekday). */
+/** Games / Starline → Setting: the weekly timetable matrix (provider × weekday). */
 export function GameSetting({ kind }: { kind: GameKind }) {
   const { nonce } = useRefresh();
   const { can } = useAuth();

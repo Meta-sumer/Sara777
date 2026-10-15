@@ -14,7 +14,6 @@ export default function HomeScreen() {
   const { colors } = useTheme();
   const navigation = useAppNavigation();
   const { settings, refreshUser, refreshSettings } = useAuth();
-  const showAndarBahar = settings?.andarBaharEnabled !== false;
   const [markets, setMarkets] = useState<Market[] | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -80,9 +79,6 @@ export default function HomeScreen() {
           ListHeaderComponent={
             <View style={{ marginBottom: 4 }}>
               <GameBanner title="King Starline" onPress={() => navigation.navigate('Starline')} />
-              {showAndarBahar ? (
-                <GameBanner title="Andar Bahar" dark onPress={() => navigation.navigate('AndarBahar')} />
-              ) : null}
             </View>
           }
           renderItem={({ item }) => <MarketCard market={item} onPlay={() => openMarket(item)} />}
@@ -93,7 +89,7 @@ export default function HomeScreen() {
   );
 }
 
-/** Big pill button on Home that opens a game list (King Starline, Andar Bahar). */
+/** Big pill button on Home that opens a game list (King Starline). */
 function GameBanner({ title, onPress, dark = false }: { title: string; onPress: () => void; dark?: boolean }) {
   const { colors } = useTheme();
   const bg = dark ? colors.primaryDark : colors.primary;

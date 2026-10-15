@@ -43,12 +43,11 @@ interface Filters {
 const KINDS = [
   { value: 'main', label: 'Main Market' },
   { value: 'starline', label: 'Starline' },
-  { value: 'andarbahar', label: 'Andar Bahar' },
   { value: 'all', label: 'All Games' },
 ];
 
 export function SalesSummary() {
-  const allMarkets = useMarkets(['main', 'starline', 'andarbahar']);
+  const allMarkets = useMarkets(['main', 'starline']);
   const { form, set, applied, run, submit, reset } = useFilters<Filters>(() => ({
     from: addDays(today(), -6),
     to: today(),

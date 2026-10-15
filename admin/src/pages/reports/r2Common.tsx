@@ -26,7 +26,7 @@ export interface R2Options {
   gameTypes: R2GameType[];
 }
 
-export const KIND_ORDER = ['main', 'starline', 'andarbahar'];
+export const KIND_ORDER = ['main', 'starline'];
 
 /** Markets and game types for the filters (loaded once per page visit). */
 export function useR2Options(): R2Options | null {

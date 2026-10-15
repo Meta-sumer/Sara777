@@ -38,7 +38,7 @@ export default function BidHistoryScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgAlt }}>
       <Header
-        title={kind === 'starline' ? 'Starline Bid History' : kind === 'andarbahar' ? 'Andar Bahar Bid History' : 'Bid History'}
+        title={kind === 'starline' ? 'Starline Bid History' : 'Bid History'}
         back
       />
       {!data ? (

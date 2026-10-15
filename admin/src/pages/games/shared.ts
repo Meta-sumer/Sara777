@@ -1,11 +1,11 @@
-/* Types, labels and helpers shared by the Games / Starline / Andar Bahar pages.
-   One component serves all three kinds; the API lives at /api/admin/games. */
+/* Types, labels and helpers shared by the Games and Starline pages.
+   One component serves both kinds; the API lives at /api/admin/games. */
 
-export type GameKind = 'main' | 'starline' | 'andarbahar';
+export type GameKind = 'main' | 'starline';
 export type Session = 'open' | 'close';
 
 /** permission prefix per kind (server/src/permissions.ts) */
-export const PERM: Record<GameKind, string> = { main: 'games', starline: 'starline', andarbahar: 'andarbahar' };
+export const PERM: Record<GameKind, string> = { main: 'games', starline: 'starline' };
 
 export const TEXT: Record<
   GameKind,
@@ -26,14 +26,6 @@ export const TEXT: Record<
     rates: 'Star Game Rates',
     result: 'Star Game Result',
     resultCard: 'Starline Game Result',
-  },
-  andarbahar: {
-    provider: 'AB Game Provider',
-    settings: 'AB Game Settings',
-    settingsCard: 'AB Game Settings',
-    rates: 'AB Game Rates',
-    result: 'AB Game Result',
-    resultCard: 'Andar Bahar Game Result',
   },
 };
 
@@ -65,7 +57,6 @@ export interface Provider {
 export interface ProvidersResponse {
   kind: GameKind;
   date: string;
-  enabled: boolean;
   providers: Provider[];
 }
 

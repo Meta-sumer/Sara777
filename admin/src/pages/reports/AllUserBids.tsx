@@ -169,7 +169,6 @@ export function AllUserBids() {
               <select value={f.kind} onChange={(e) => set('kind', e.target.value)}>
                 <option value="main">{KIND_LABEL.main}</option>
                 <option value="starline">{KIND_LABEL.starline}</option>
-                <option value="andarbahar">{KIND_LABEL.andarbahar}</option>
                 <option value="all">All Markets</option>
               </select>
             </Field>

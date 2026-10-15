@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { db, getSetting, nowIso } from '../db.js';
 import { type AuthedRequest, requireAuth } from '../auth.js';
 import { allRates } from '../rates.js';
-import { andarBaharEnabled } from '../schedule.js';
 import { uploadUrl } from '../uploads.js';
 import { appContent } from './admin/content.js';
 
@@ -12,7 +11,8 @@ export const miscRouter = Router();
 miscRouter.get('/settings', (_req, res) => {
   res.json({
     appName: getSetting('app_name', 'Rama777'),
-    andarBaharEnabled: andarBaharEnabled(),
+    // Andar Bahar was removed; tells app builds that still have its screen to hide it
+    andarBaharEnabled: false,
     whatsappNumber: getSetting('whatsapp_number', '919999999999'),
     supportName: getSetting('support_name', 'Rama777 Support'),
     marquee: getSetting('marquee', 'Beware of fake applications'),

@@ -51,19 +51,6 @@ export const NAV: NavGroup[] = [
     ],
   },
   {
-    key: 'andarbahar',
-    label: 'Andar Bahar',
-    icon: 'diamond',
-    perm: 'andarbahar',
-    children: [
-      p('andarbahar/provider', 'AB Game Provider', 'andarbahar.provider', 'AB Game Provider'),
-      p('andarbahar/setting', 'AB Game Setting', 'andarbahar.setting', 'AB Game Settings'),
-      p('andarbahar/rates', 'AB Game Rates', 'andarbahar.rates', 'AB Game Rates'),
-      p('andarbahar/pnl', 'AB Game Profit Loss', 'andarbahar.pnl', 'Andar Bahar Profit/Loss'),
-      p('andarbahar/result', 'AB Game Result', 'andarbahar.result', 'AB Game Result'),
-    ],
-  },
-  {
     key: 'bookie',
     label: 'Bookie Corner',
     icon: 'wallet',
@@ -111,8 +98,6 @@ export const NAV: NavGroup[] = [
       p('reports/sales', 'Sales Report', 'reports.sales'),
       p('reports/sales-summary', 'Sales Summary', 'reports.sales_summary'),
       p('reports/starline-sales', 'Starline Sales Report', 'reports.starline_sales'),
-      p('reports/ab-sales', 'Andar Bahar Sales Report', 'reports.ab_sales'),
-      p('reports/ab-bids', 'Andar Bahar Total Bids', 'reports.ab_bids', 'Andar Bahar Bidding Report'),
       p('reports/fund', 'Fund Report', 'reports.fund'),
       p('reports/fund2', 'Fund Report 2', 'reports.fund2'),
       p('reports/upi-fund', 'UPI Fund Report', 'reports.upi_fund'),

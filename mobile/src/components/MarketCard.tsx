@@ -9,7 +9,7 @@ export function MarketCard({ market, onPlay }: { market: Market; onPlay: () => v
   const statusColor = market.isPlayable ? colors.success : colors.text;
   const isMain = market.kind === 'main';
 
-  // main: when open / close bids stop · starline + andar bahar: bids close and the result time
+  // main: when open / close bids stop · starline: bids close and the result time
   const left = isMain
     ? { label: 'Open Bids :', value: market.openBidsLabel ?? market.openTimeLabel }
     : { label: 'Bids Close :', value: market.closeBidsLabel ?? market.openTimeLabel };

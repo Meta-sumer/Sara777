@@ -55,7 +55,7 @@ export default function GameResultScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bgAlt }}>
       <Header
-        title={kind === 'starline' ? 'Starline Result' : kind === 'andarbahar' ? 'Andar Bahar Result' : 'Game Result'}
+        title={kind === 'starline' ? 'Starline Result' : 'Game Result'}
         back
       />
 

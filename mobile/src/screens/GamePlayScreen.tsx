@@ -13,7 +13,6 @@ const GAME_ICONS: Record<string, string> = {
   single_digit: 'numeric-1-box-outline',
   jodi_digit: 'numeric-2-box-multiple-outline',
   red_bracket: 'numeric-2-box-multiple',
-  ab_jodi: 'cards-diamond-outline',
   single_panna: 'cards-outline',
   double_panna: 'cards',
   triple_panna: 'cards-playing-outline',

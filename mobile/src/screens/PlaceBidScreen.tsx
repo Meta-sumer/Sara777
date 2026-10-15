@@ -35,8 +35,6 @@ function validatePick(gameType: string, pick: string): string | null {
       return /^[0-9]$/.test(pick) ? null : 'Choose a digit between 0 and 9';
     case 'jodi_digit':
       return /^[0-9]{2}$/.test(pick) ? null : 'Jodi must be 2 digits (00-99)';
-    case 'ab_jodi':
-      return /^[0-9]{2}$/.test(pick) ? null : 'Enter a 2 digit number (00-99)';
     case 'red_bracket':
       return RED_JODIS.includes(pick) ? null : 'Choose one of the red bracket numbers';
     case 'single_panna':
@@ -86,7 +84,7 @@ export default function PlaceBidScreen() {
   const isSangam = gameType === 'half_sangam' || gameType === 'full_sangam';
   const isSingleDigit = gameType === 'single_digit';
   const isRedBracket = gameType === 'red_bracket';
-  const isTwoDigit = gameType === 'jodi_digit' || gameType === 'ab_jodi';
+  const isTwoDigit = gameType === 'jodi_digit';
 
   const currentPick = isSangam ? `${left}-${right}` : digit;
   const total = useMemo(() => entries.reduce((sum, e) => sum + e.amount, 0), [entries]);
@@ -277,7 +275,7 @@ export default function PlaceBidScreen() {
             </Row>
           ) : (
             <Field
-              label={gameType === 'ab_jodi' ? 'Number (00-99)' : isTwoDigit ? 'Jodi (00-99)' : 'Panna (3 digits)'}
+              label={isTwoDigit ? 'Jodi (00-99)' : 'Panna (3 digits)'}
               placeholder={isTwoDigit ? '46' : '128'}
               keyboardType="number-pad"
               maxLength={isTwoDigit ? 2 : 3}

@@ -15,6 +15,8 @@ if (!process.env.TZ) process.env.TZ = process.env.APP_TZ ?? 'Asia/Kolkata';
 
 export const config = {
   port: Number(process.env.PORT ?? 4100),
+  /** interface to listen on; 127.0.0.1 behind nginx on a server, every interface when unset */
+  host: process.env.HOST || undefined,
   jwtSecret: process.env.JWT_SECRET ?? 'dev-secret-change-me',
   adminKey: process.env.ADMIN_KEY ?? 'admin123',
   adminUser: process.env.ADMIN_USER ?? 'admin',

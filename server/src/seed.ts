@@ -1,7 +1,8 @@
 import { config } from './config.js';
 import { db, getSetting, nowIso, setSetting } from './db.js';
-import { pannaDigit, randomJodi, randomPanna, todayStr } from './game.js';
+import { pannaDigit, randomPanna, todayStr } from './game.js';
 import { ensureRates } from './rates.js';
+import { cancelMarketDay } from './results.js';
 import { ensureAllSchedules } from './schedule.js';
 
 const MAIN_MARKETS: Array<[name: string, open: string, close: string]> = [
@@ -36,16 +37,7 @@ const STARLINE_MARKETS: Array<[name: string, time: string]> = [
   ['KING STARLINE 09:00 PM', '21:00'],
 ];
 
-/** Andar Bahar: a two-digit (00-99) draw four times a day. */
-const ANDAR_BAHAR_MARKETS: Array<[name: string, time: string]> = [
-  ['ANDAR BAHAR 10:30 AM', '10:30'],
-  ['ANDAR BAHAR 02:30 PM', '14:30'],
-  ['ANDAR BAHAR 06:30 PM', '18:30'],
-  ['ANDAR BAHAR 10:30 PM', '22:30'],
-];
-
 const DEFAULT_SETTINGS: Record<string, string> = {
-  andarbahar_enabled: '1',
   app_name: 'Rama777',
   support_name: 'Rama777 Support',
   whatsapp_number: '919999999999',
@@ -88,28 +80,62 @@ function seedMarkets() {
   return true;
 }
 
-/** Add the Andar Bahar draws to databases created before the game existed. */
-function seedAndarBahar() {
-  const count = (db.prepare(`SELECT COUNT(*) AS c FROM markets WHERE kind = 'andarbahar'`).get() as { c: number }).c;
-  if (count > 0) return [] as number[];
-  const insert = db.prepare(
-    'INSERT INTO markets (name, kind, open_time, close_time, days, is_active, sort_order) VALUES (?, ?, ?, ?, ?, 1, ?)',
-  );
-  return ANDAR_BAHAR_MARKETS.map(([name, time], i) =>
-    Number(insert.run(name, 'andarbahar', time, time, '0,1,2,3,4,5,6', i).lastInsertRowid),
-  );
+/**
+ * Andar Bahar was removed from the app and the admin panel. Databases that
+ * still have its draws get them retired once: pending bids are refunded, draws
+ * without bids are deleted, draws with betting history are kept inactive (their
+ * bids stay in reports), and its rates, on/off setting and staff permissions go.
+ */
+function retireAndarBahar() {
+  // nothing left to do once draws are inactive, bids settled and rates/setting gone
+  const leftovers = (
+    db
+      .prepare(
+        `SELECT (SELECT COUNT(*) FROM markets WHERE kind = 'andarbahar' AND is_active = 1)
+              + (SELECT COUNT(*) FROM bids WHERE kind = 'andarbahar' AND status = 'pending')
+              + (SELECT COUNT(*) FROM rates WHERE kind = 'andarbahar') AS c`,
+      )
+      .get() as { c: number }
+  ).c;
+  if (leftovers === 0 && !getSetting('andarbahar_enabled')) return;
+  const markets = db.prepare(`SELECT id FROM markets WHERE kind = 'andarbahar'`).all() as Array<{ id: number }>;
+
+  for (const { id } of markets) {
+    const days = db
+      .prepare(`SELECT DISTINCT bid_date FROM bids WHERE market_id = ? AND status = 'pending'`)
+      .all(id) as Array<{ bid_date: string }>;
+    for (const d of days) cancelMarketDay(id, d.bid_date, 'Andar Bahar game removed — bid refunded');
+
+    const hasBids = (db.prepare('SELECT COUNT(*) AS c FROM bids WHERE market_id = ?').get(id) as { c: number }).c > 0;
+    if (hasBids) {
+      db.prepare('UPDATE markets SET is_active = 0 WHERE id = ?').run(id);
+    } else {
+      db.prepare('DELETE FROM results WHERE market_id = ?').run(id);
+      db.prepare('DELETE FROM market_schedule WHERE market_id = ?').run(id);
+      db.prepare('DELETE FROM markets WHERE id = ?').run(id);
+    }
+  }
+
+  db.prepare(`DELETE FROM rates WHERE kind = 'andarbahar'`).run();
+  db.prepare(`DELETE FROM settings WHERE key = 'andarbahar_enabled'`).run();
+  const staff = db.prepare('SELECT id, permissions FROM admins').all() as Array<{ id: number; permissions: string }>;
+  for (const s of staff) {
+    const kept = (JSON.parse(s.permissions || '[]') as string[]).filter(
+      (k) => !k.startsWith('andarbahar') && k !== 'reports.ab_sales' && k !== 'reports.ab_bids',
+    );
+    db.prepare('UPDATE admins SET permissions = ? WHERE id = ?').run(JSON.stringify(kept), s.id);
+  }
+  console.log(`[seed] andar bahar retired (${markets.length} draws)`);
 }
 
 /** Backfill past results so the chart / history screens have data on day one. */
-function seedHistory(days = 45, onlyMarketIds?: number[]) {
-  const markets = (db.prepare('SELECT id, kind FROM markets').all() as Array<{ id: number; kind: string }>).filter(
-    (m) => !onlyMarketIds || onlyMarketIds.includes(m.id),
-  );
+function seedHistory(days = 45) {
+  const markets = db.prepare('SELECT id, kind FROM markets').all() as Array<{ id: number; kind: string }>;
   const insert = db.prepare(
     `INSERT OR IGNORE INTO results
-       (market_id, result_date, open_panna, open_digit, close_panna, close_digit, number,
+       (market_id, result_date, open_panna, open_digit, close_panna, close_digit,
         open_declared_at, close_declared_at, open_settled_at, close_settled_at, declared_by)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Auto')`,
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Auto')`,
   );
 
   for (let back = days; back >= 1; back--) {
@@ -118,16 +144,12 @@ function seedHistory(days = 45, onlyMarketIds?: number[]) {
     const date = todayStr(d);
     const at = d.toISOString();
     for (const m of markets) {
-      if (m.kind === 'andarbahar') {
-        insert.run(m.id, date, null, null, null, null, randomJodi(), at, null, at, null);
-        continue;
-      }
       const op = randomPanna();
       if (m.kind === 'starline') {
-        insert.run(m.id, date, op, pannaDigit(op), null, null, null, at, null, at, null);
+        insert.run(m.id, date, op, pannaDigit(op), null, null, at, null, at, null);
       } else {
         const cp = randomPanna();
-        insert.run(m.id, date, op, pannaDigit(op), cp, pannaDigit(cp), null, at, at, at, at);
+        insert.run(m.id, date, op, pannaDigit(op), cp, pannaDigit(cp), at, at, at, at);
       }
     }
   }
@@ -149,7 +171,7 @@ function seedNotifications() {
 
 export function ensureSeed() {
   const fresh = seedMarkets();
-  const newAb = seedAndarBahar();
+  retireAndarBahar();
   ensureAllSchedules();
   ensureRates();
   seedSettings();
@@ -157,9 +179,6 @@ export function ensureSeed() {
   if (fresh) {
     seedHistory();
     console.log('[seed] markets, settings and 45 days of results created');
-  } else if (newAb.length > 0) {
-    seedHistory(45, newAb);
-    console.log('[seed] andar bahar draws added');
   }
   return { fresh };
 }

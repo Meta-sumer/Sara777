@@ -163,7 +163,7 @@ db.exec(`
 --             close_bet_time   close-session bets close
 --             open_result_time / close_result_time   when each half is published
 --   starline  open_bet_time    betting opens
---   andarbahar close_bet_time  betting closes
+--             close_bet_time   betting closes
 --             open_result_time the single result (close_result_time is NULL)
 CREATE TABLE IF NOT EXISTS market_schedule (
   market_id INTEGER NOT NULL REFERENCES markets(id) ON DELETE CASCADE,
@@ -243,8 +243,7 @@ addColumnIfMissing('users', 'delete_reason', 'delete_reason TEXT');
 db.exec(`UPDATE users SET username = mobile WHERE username IS NULL OR username = ''`);
 db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_username ON users(username)');
 
-// results: Andar Bahar number, and who/when declared and settled each half
-addColumnIfMissing('results', 'number', 'number TEXT');
+// results: who/when declared and settled each half
 addColumnIfMissing('results', 'open_declared_at', 'open_declared_at TEXT');
 addColumnIfMissing('results', 'close_declared_at', 'close_declared_at TEXT');
 addColumnIfMissing('results', 'open_settled_at', 'open_settled_at TEXT');

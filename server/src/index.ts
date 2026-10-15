@@ -62,10 +62,14 @@ const { fresh } = ensureSeed();
 await ensureDemo(fresh);
 startScheduler();
 
-app.listen(config.port, () => {
+const onListening = () => {
   console.log(`\n  Matka API running`);
   console.log(`  local   http://localhost:${config.port}/api`);
   console.log(`  lan     http://${lanAddress()}:${config.port}/api`);
   console.log(`  admin   http://localhost:${config.port}/admin`);
   console.log(`  put the lan url in mobile/.env as EXPO_PUBLIC_API_URL\n`);
-});
+};
+
+// HOST=127.0.0.1 on a server behind nginx; every interface otherwise
+if (config.host) app.listen(config.port, config.host, onListening);
+else app.listen(config.port, onListening);
