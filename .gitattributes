@@ -1,0 +1,3 @@
+# scripts and server config run on Linux / Git Bash: keep Unix line endings
+*.sh text eol=lf
+deploy/* text eol=lf
